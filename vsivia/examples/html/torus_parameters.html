@@ -1,0 +1,159 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Torus example</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2013-01-16"><meta name="DC.source" content="torus_parameters.m"><style type="text/css">
+
+body {
+  background-color: white;
+  margin:10px;
+}
+
+h1 {
+  color: #990000; 
+  font-size: x-large;
+}
+
+h2 {
+  color: #990000;
+  font-size: medium;
+}
+
+/* Make the text shrink to fit narrow windows, but not stretch too far in 
+wide windows. */ 
+p,h1,h2,div.content div {
+  max-width: 600px;
+  /* Hack for IE6 */
+  width: auto !important; width: 600px;
+}
+
+pre.codeinput {
+  background: #EEEEEE;
+  padding: 10px;
+}
+@media print {
+  pre.codeinput {word-wrap:break-word; width:100%;}
+} 
+
+span.keyword {color: #0000FF}
+span.comment {color: #228B22}
+span.string {color: #A020F0}
+span.untermstring {color: #B20000}
+span.syscmd {color: #B28C00}
+
+pre.codeoutput {
+  color: #666666;
+  padding: 10px;
+}
+
+pre.error {
+  color: red;
+}
+
+p.footer {
+  text-align: right;
+  font-size: xx-small;
+  font-weight: lighter;
+  font-style: italic;
+  color: gray;
+}
+
+  </style></head><body><div class="content"><h1>Torus example</h1><p>In this example, we will aim at defining a 3-dimensional inversion problem, in order to solve it using <a href="../../html/vsivia.html">vsivia</a>.</p><p>The following function <i>f</i> will be considered:</p><p><img src="torus_parameters_eq17398.png" alt="$$ f : (x,y,z) \mapsto (R - \sqrt{x^2 + y^2})^2 + z^2 $$"></p><p>where <i>R</i> = 5.</p><p><a href="../../html/vsivia.html">vsivia</a> is used to determine an inner and an outer enclosures of the inverse image of <i>f</i> on [1,4], using paving. From a graphical point of view, we are looking for the set subtraction between two tori, around the Z-axis, that have a larger radius of <i>R</i> = 5, and whose smaller radii are 1 and 2. We set the initial box to [-8,8]x[-8,8]x[-8,8].</p><p>This problem being quite similar from <a href="doughnut_parameters.html">doughnut_parameters</a>, its parameters are defined in the same way, except that are 3 and not 2 dimensions (<i>i.e.</i> variables) to consider.</p><p>At first, we shall create a class inheriting from <a href="../../html/vsivia_parameters.html">vsivia_parameters</a></p><pre class="codeinput"><span class="keyword">classdef</span> torus_parameters &lt; vsivia_parameters
+</pre><pre class="codeinput">    properties
+</pre><p>We indicate the kind of problem: <i>inversion</i>.</p><pre class="codeinput">        algorithm = <span class="string">'inversion'</span> ;
+</pre><p>Then the initial box.</p><pre class="codeinput">        U0 = [-8 8 ; -8 8 ; -8 8] ;
+</pre><p>Then the interval image to be inverted.</p><pre class="codeinput">        Y0 = [1 4] ;
+</pre><p>Then the accuracy parameter. We consider here an absolute epsilon of 0.5, which means that boxes whose larger component is smaller than 0.5 will not be bisected.</p><pre class="codeinput">        epsilon = .5 ;
+</pre><pre class="codeinput">    <span class="keyword">end</span> <span class="comment">% properties</span>
+</pre><p>At last, the function <i>f</i> is defined.</p><pre class="codeinput">    methods (Static)
+
+        <span class="keyword">function</span> z = compute(x,y,z)
+
+            R = 5 ;
+
+            z = sqr(R - sqrt(sqr(x) + sqr(y), <span class="string">'p'</span>)) + sqr(z) ;
+
+        <span class="keyword">end</span>
+
+    <span class="keyword">end</span> <span class="comment">% methods</span>
+</pre><pre class="codeinput"><span class="keyword">end</span>
+</pre><p class="footer"><br>
+      Published with MATLAB&reg; 7.11<br></p></div><!--
+##### SOURCE BEGIN #####
+%% Torus example
+%
+% In this example, we will aim at defining a 3-dimensional inversion
+% problem, in order to solve it using <../../html/vsivia.html vsivia>.
+%
+% The following function _f_ will be considered:
+%
+% $$ f : (x,y,z) \mapsto (R - \sqrt{x^2 + y^2})^2 + z^2 $$
+%
+% where _R_ = 5.
+% 
+% <../../html/vsivia.html vsivia> is used to determine an inner and an
+% outer enclosures of the inverse image of _f_ on [1,4], using paving. From
+% a graphical point of view, we are looking for the set subtraction
+% between two tori, around the Z-axis, that have a larger radius of _R_ = 5,
+% and whose smaller radii are 1 and 2. We set the initial box to
+% [-8,8]x[-8,8]x[-8,8].
+%
+% This problem being quite similar from <doughnut_parameters.html
+% doughnut_parameters>, its parameters are defined in the same way, except
+% that are 3 and not 2 dimensions (_i.e._ variables) to consider.
+%
+% At first, we shall create a class inheriting from
+% <../../html/vsivia_parameters.html vsivia_parameters>
+
+classdef torus_parameters < vsivia_parameters
+    
+    properties
+        
+        %%
+        % We indicate the kind of problem: _inversion_.
+        
+        algorithm = 'inversion' ;
+
+        %%
+        % Then the initial box.
+        
+        U0 = [-8 8 ; -8 8 ; -8 8] ;
+        
+        %%
+        % Then the interval image to be inverted.
+        
+        Y0 = [1 4] ;
+        
+        %%
+        % Then the accuracy parameter. We consider here an absolute epsilon of 0.5,
+        % which means that boxes whose larger component is smaller than 0.5
+        % will not be bisected.
+        
+        epsilon = .5 ;
+        
+    end % properties
+    
+    %%
+    % At last, the function _f_ is defined.
+    
+    methods (Static)
+        
+        function z = compute(x,y,z)
+            
+            R = 5 ;
+            
+            z = sqr(R - sqrt(sqr(x) + sqr(y), 'p')) + sqr(z) ;
+            
+        end
+        
+    end % methods
+    
+end
+
+
+##### SOURCE END #####
+--></body></html>

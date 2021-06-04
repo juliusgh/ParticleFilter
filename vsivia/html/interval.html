@@ -1,0 +1,3708 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Using vectorial interval arithmetics within Matlab&reg;</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2012-11-26"><meta name="DC.source" content="interval.m"><style type="text/css">
+
+body {
+  background-color: white;
+  margin:10px;
+}
+
+h1 {
+  color: #990000; 
+  font-size: x-large;
+}
+
+h2 {
+  color: #990000;
+  font-size: medium;
+}
+
+/* Make the text shrink to fit narrow windows, but not stretch too far in 
+wide windows. */ 
+p,h1,h2,div.content div {
+  max-width: 600px;
+  /* Hack for IE6 */
+  width: auto !important; width: 600px;
+}
+
+pre.codeinput {
+  background: #EEEEEE;
+  padding: 10px;
+}
+@media print {
+  pre.codeinput {word-wrap:break-word; width:100%;}
+} 
+
+span.keyword {color: #0000FF}
+span.comment {color: #228B22}
+span.string {color: #A020F0}
+span.untermstring {color: #B20000}
+span.syscmd {color: #B28C00}
+
+pre.codeoutput {
+  color: #666666;
+  padding: 10px;
+}
+
+pre.error {
+  color: red;
+}
+
+p.footer {
+  text-align: right;
+  font-size: xx-small;
+  font-weight: lighter;
+  font-style: italic;
+  color: gray;
+}
+
+  </style></head><body><div class="content"><h1>Using vectorial interval arithmetics within Matlab&reg;</h1><!--introduction--><p>The class <i>interval</i>, presented hereafter, is meant to compute intervals in an efficient and user-friendly way. Efficiency is achieved by making it possible to handle arrays of intervals, and thus perform computations in a fully vectorial way, without using any explicit <i>for</i> loop at any time. User-friendliness relies upon a class structure, that allows overloading Matlab operators, in order to redefine a specific arithmetic for intervals, as well as array routines to work with arrays of intervals in the same way as for arrays of scalars.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Class definition and structure</a></li><li><a href="#3">Building <i>interval</i> objects</a></li><li><a href="#9">Instantiating interval objects</a></li><li><a href="#12">Displaying <i>interval</i> objects</a></li><li><a href="#13">Manipulating <i>interval</i> objects as arrays</a></li><li><a href="#26">Performing arithmetic operations</a></li><li><a href="#49">Binary relations</a></li><li><a href="#60">Other operations</a></li></ul></div><h2>Class definition and structure<a name="1"></a></h2><p>The class <i>interval</i> works internally with two arrays of doubles, of the same size, representing the <i>lower</i> and <i>upper</i> bounds of the intervals. The <img src="interval_eq79464.png" alt="$i^{th}$"> interval contained in an <i>interval</i> object is thus made of the lower and upper bounds located in the <img src="interval_eq79464.png" alt="$i^{th}$"> position of property arrays <i>lower</i> and <i>upper</i>.</p><p>Note: <i>lower</i> and <i>upper</i> are not supposed to be manipulated directly from       outside the class; in the case they are, be careful to keep their       sizes consistent with each other (<i>i.e.</i> identical)</p><pre class="codeinput"><span class="keyword">classdef</span> interval
+</pre><pre class="codeinput">    properties (Access = private)
+
+        lower = [] ;    <span class="comment">% Internal array (of doubles) used to store the lower bounds</span>
+        upper = [] ;    <span class="comment">% Internal array (of doubles) used to store the upper bounds</span>
+
+    <span class="keyword">end</span>
+</pre><h2>Building <i>interval</i> objects<a name="3"></a></h2><p>Basically, <i>interval</i> objects may be created through two different ways: by specifying direclty their lower and upper bounds (two arrays of doubles), or by extracting them from a single array of doubles. Both processes are implemented by the following couple of methods, which are supposed to be used only internally (they do not perform any argument checking).</p><pre class="codeinput">    methods (Hidden, Access = private)
+</pre><p><b>copy (&nbsp;int, lower, upper&nbsp;)</b></p><p>Sets interval <i>int</i> properties <i>lower</i> and <i>upper</i> as specified, returns the newly defined interval.</p><pre class="codeinput">        <span class="keyword">function</span> int = copy(int, lower, upper)
+            int.lower = lower ;
+            int.upper = upper ;
+        <span class="keyword">end</span> <span class="comment">% copy</span>
+</pre><p><b>extract (&nbsp;int, array, dim&nbsp;)</b></p><p>Extracts the lower and upper bounds defined in a single <i>array</i> of doubles, sets interval <i>int</i> properties consequently and returns it.</p><p>The extraction is performed by splitting <i>array</i> in two along its <img src="interval_eq50257.png" alt="$dim^{th}$"> dimension. The depth of <i>array</i> along its <img src="interval_eq50257.png" alt="$dim^{th}$"> dimension shall be therefore equal to 2: the first level gives <i>lower</i>, and second one <i>upper</i>. The singleton dimension <i>dim</i> is removed from <i>lower</i> and <i>upper</i>.</p><div><ul><li><b>Example 1:</b> Let us consider the following array:</li></ul></div><p><img src="interval_eq52710.png" alt="$$ A = \left[ \begin{tabular}{cc} 1 &amp; 2 \\ 3 &amp; 4 \end{tabular} \right] $$"></p><p>Calling <i>extract (&nbsp;int, A, 2&nbsp;)</i> (with <i>int</i> any <i>interval</i> object) will split <i>A</i> along its second dimension:</p><p><img src="interval_eq53989.png" alt="$$ A = \left[ \begin{tabular}{c|c} 1 &amp; 2 \\ 3 &amp; 4 \end{tabular} \right] $$"></p><p>In this way, the first and second columns of <i>A</i> give <i>lower</i> and <i>upper</i>&nbsp;:</p><p><img src="interval_eq54784.png" alt="$$ \left\lbrace \begin{tabular}{ccc} \vspace{2mm}&#xA;     $lower$ &amp; = &amp; \bigg[ {\begin{tabular}{c} 1\\ 3 \end{tabular}} \bigg] \\&#xA;     $upper$ &amp; = &amp; \bigg[ {\begin{tabular}{c} 2\\ 4 \end{tabular}} \bigg] \\&#xA;   \end{tabular} \right.$$"></p><p>Hence, the newly defined interval object will be a 2-by-1 array of intervals, the first interval being [1 2], and the second one being [3 4].</p><div><ul><li><b>Example 2:</b> Keeping <i>A</i> from the previous example, let us consider now <i>extract (&nbsp;int, A, 1&nbsp;)</i> . <i>A</i> is split along its first dimension:</li></ul></div><p><img src="interval_eq25559.png" alt="$$ A = \left[ \begin{tabular}{cc} 1 &amp; 2 \\ \hline 3 &amp; 4 \end{tabular} \right] $$"></p><p>As in the previous example, <i>lower</i> and <i>upper</i> are inferred from the row vectors constituting <i>A</i>, which are 1-by-2 arrays of doubles. Logically, the first dimension of these subarrays is a singleton dimension, which is removed by <i>extract</i> . In this way, <i>lower</i> and <i>upper</i> are not 1-by-2 arrays, but 2-by-1 arrays:</p><p><img src="interval_eq97678.png" alt="$$ \left\lbrace \begin{tabular}{ccc} \vspace{2mm}&#xA;     $lower$ &amp; = &amp; \bigg[ {\begin{tabular}{c} 1\\ 2 \end{tabular}} \bigg] \\&#xA;     $upper$ &amp; = &amp; \bigg[ {\begin{tabular}{c} 3\\ 4 \end{tabular}} \bigg] \\&#xA;   \end{tabular} \right.$$"></p><p>The resulting array of intervals is therefore a 2-by-1 array as well.</p><p>Note: Had been <i>A</i> an <i>n</i>-by-2-by- <i>m</i> array, extracting <i>A</i> along its second dimension would have yield an <i>n</i>-by- <i>m</i> array of intervals.</p><p>Note: Example 1 is a particular example in which the extraction is performed along the last non singleton dimension of <i>A</i> . As a result, removing this last dimension, that has become singleton after the extraction, does not change in fact the dimension of both extracted subarrays.</p><pre class="codeinput">        <span class="keyword">function</span> int = extract(int, array, dim)
+
+            n = ndims(array) ;                   <span class="comment">% n: number of dimensions of array</span>
+
+            S.type = <span class="string">'()'</span> ;                      <span class="comment">% S: subscript used to split A</span>
+
+            S.subs = repmat({<span class="string">':'</span>}, 1, n) ;
+
+            S.subs{dim} = 1 ;
+
+            int.lower = subsref(array,S) ;       <span class="comment">% lower = array(:,...,:,1,:,...,:)</span>
+                                                 <span class="comment">%               |       |       |</span>
+            S.subs{dim} = 2 ;                    <span class="comment">%               1      dim      n</span>
+
+            int.upper = subsref(array,S) ;       <span class="comment">% upper = array(:,...,:,2,:,...,:)</span>
+                                                 <span class="comment">%               |       |       |</span>
+                                                 <span class="comment">%               1      dim      n</span>
+
+            u = [1:dim-1 dim+1:n dim] ;          <span class="comment">% Dimension dim of lower and upper</span>
+                                                 <span class="comment">% is singleton -&gt; removes it by</span>
+            int.lower = permute(int.lower,u) ;   <span class="comment">% placing it as the last dimension</span>
+            int.upper = permute(int.upper,u) ;
+
+        <span class="keyword">end</span> <span class="comment">% extract</span>
+</pre><pre class="codeinput">    <span class="keyword">end</span> <span class="comment">% private methods</span>
+</pre><p>-- <b>Miscellaneous</b> --</p><p><i>Interval</i> methods that expect to be passed <i>interval</i> objects may also accept arrays of doubles. In this case, these arrays are given to the default constructor, in order to build a proper <i>interval</i> object. This is the purpose of the <i>toInterval</i> function.</p><pre class="codeinput">    methods (Hidden, Static)
+
+        <span class="keyword">function</span> int = toInterval(int)
+
+            <span class="keyword">if</span> isa(int,<span class="string">'numeric'</span>) || isa(int,<span class="string">'logical'</span>) <span class="comment">% Does not do anything if int</span>
+                int = interval(int) ;                   <span class="comment">% is already an interval object</span>
+            <span class="keyword">end</span>
+
+        <span class="keyword">end</span> <span class="comment">% interval.toInterval</span>
+
+    <span class="keyword">end</span> <span class="comment">% static methods</span>
+</pre><h2>Instantiating interval objects<a name="9"></a></h2><p>Intervals may be defined by different means:</p><div><ol><li>From nothing, <i>i.e.</i> <i>interval (&nbsp;)</i>&nbsp;: <i>lower</i> and <i>upper</i> are initialized to empty arrays</li><li>From an other interval <i>int</i> , <i>i.e.</i> <i>interval (&nbsp;int&nbsp;)</i>&nbsp;: <i>lower</i> and <i>upper</i> are copied, equivalent to <i>interval (&nbsp;int.lower, int.upper&nbsp;)</i></li><li>From a couple of lower and upper bounds <i>L</i> and <i>U</i> , <i>i.e.</i> <i>interval (&nbsp;L, U&nbsp;)</i>&nbsp;: if <i>L</i> and <i>U</i> have the same size, <i>lower = L</i> and <i>upper = U</i> (otherwise an error occurs)</li><li>From an array of doubles <i>A</i> , <i>i.e.</i> <i>interval(A [ , [ ], dim ]&nbsp;)</i>&nbsp;: the lower and upper bounds are extracted from <i>A</i> (see <i>extract</i>&nbsp;), that is split along its <img src="interval_eq50257.png" alt="$dim^{th}$"> dimension; if <i>dim</i> is not specified, or invalid (depth of <i>A</i> along <i>dim</i> different from 2) the algorithm acts as follows:</li></ol></div><div><ul><li>if <i>dim</i> is invalid (for instance 0), initializes both <i>lower</i> and <i>upper</i> to <i>A</i> - equivalent to <i>interval (&nbsp;A,&nbsp;A&nbsp;)</i></li><li>otherwise, if the depth of <i>A</i> along its second dimension is equal to 2, considers <i>dim = 2</i></li><li>otherwise, looks for a dimension along which the depth of <i>A</i> is equal to 2; if any and only one, considers <i>dim</i> to be this one</li><li>otherwise, initializes both <i>lower</i> and <i>upper</i> to <i>A</i></li></ul></div><pre class="codeinput">    methods
+</pre><pre class="codeinput">        <span class="keyword">function</span> obj = interval(varargin)
+
+            nin = nargin ;
+
+            <span class="keyword">if</span> nin &gt; 0
+
+                arg1 = varargin{1} ;
+
+                <span class="keyword">if</span> (nin == 1) &amp;&amp; isa(arg1, <span class="string">'interval'</span>)
+
+                    obj.lower = arg1.lower ;     <span class="comment">% 1 parameter, an interval object</span>
+                    obj.upper = arg1.upper ;     <span class="comment">% -&gt; Copy constructor</span>
+
+                <span class="keyword">elseif</span> isa(arg1, <span class="string">'numeric'</span>) || isa(arg1, <span class="string">'logical'</span>)
+
+                    <span class="keyword">if</span> nin == 1                         <span class="comment">% 1 parameter, an array of numbers</span>
+                                                        <span class="comment">% Looks for dimensions along which</span>
+                        s = size(arg1) == 2 ;           <span class="comment">% this array has a depth of 2,</span>
+                                                        <span class="comment">% the second dimension being preferred</span>
+                        <span class="keyword">if</span> size(arg1,2) == 2            <span class="comment">% If any, extract intervals from</span>
+                                                        <span class="comment">% this array</span>
+                            obj = obj.extract(arg1,2) ;
+
+                        <span class="keyword">elseif</span> sum(s) == 1
+
+                            [~, i] = max(s) ;
+
+                            obj = obj.extract(arg1,i) ;
+
+                        <span class="keyword">else</span>                             <span class="comment">% If not, constructs degenerate intervals</span>
+                                                         <span class="comment">% corresponding to this array</span>
+                            obj = copy(obj, arg1, arg1) ;
+
+                        <span class="keyword">end</span>
+
+                    <span class="keyword">elseif</span> nin == 2                      <span class="comment">% 2 parameters, both arrays of doubles</span>
+
+                        arg2 = varargin{2} ;
+
+                        <span class="keyword">if</span> isa(arg2, <span class="string">'numeric'</span>) || isa(arg2, <span class="string">'logical'</span>)  <span class="comment">% Considers them as lower / upper</span>
+                                                                         <span class="comment">% bounds if they have the same size</span>
+                            <span class="keyword">if</span> (ndims(arg1) == ndims(arg2)) &amp;&amp; all(size(arg1) == size(arg2))
+
+                                obj = copy(obj, arg1, arg2) ;
+
+                            <span class="keyword">else</span>                         <span class="comment">% Otherwise, raises an error</span>
+
+                                error(<span class="string">'Incorrect parameters'</span>) ;
+
+                            <span class="keyword">end</span>
+
+                        <span class="keyword">else</span>
+
+                            error(<span class="string">'Incorrect parameters'</span>) ;
+
+                        <span class="keyword">end</span>
+
+                    <span class="keyword">else</span>
+
+                        arg3 = varargin{3} ;
+
+                        <span class="keyword">if</span> (isa(arg3, <span class="string">'numeric'</span>) || isa(arg3, <span class="string">'logical'</span>)) &amp;&amp; (numel(arg3) == 1)
+                                               <span class="comment">% 3 parameters: an array of</span>
+                                               <span class="comment">% doubles, anything and a number</span>
+                            <span class="keyword">if</span>  arg3 &gt; 0       <span class="comment">% If the number is positive, extracts the</span>
+                                               <span class="comment">% array along the dimension it designates</span>
+                                obj = obj.extract(arg1,arg3) ;
+
+                            <span class="keyword">else</span>               <span class="comment">% Otherwise, constructs degenerate</span>
+                                               <span class="comment">% intervals from the array</span>
+                                obj = copy(obj, arg1, arg1) ;
+
+                            <span class="keyword">end</span>
+
+                        <span class="keyword">else</span>
+
+                            error(<span class="string">'Incorrect parameters'</span>) ;
+
+                        <span class="keyword">end</span>
+
+                    <span class="keyword">end</span>
+
+                <span class="keyword">end</span>
+
+            <span class="keyword">end</span>
+
+        <span class="keyword">end</span> <span class="comment">% constructor</span>
+</pre><h2>Displaying <i>interval</i> objects<a name="12"></a></h2><p>The class <i>interval</i> overrides Matlab built-in functions <i>disp</i> and <i>display</i> . These functions behave exactly in the same way.</p><p>Intervals are displayed line by line, each line containing the lower and upper bounds of an interval contained in the object.</p><div><ul><li><b>Example 1:</b> Let us consider <i>A = interval (&nbsp;[ 1 2 ; 3 4 ; 5 6]&nbsp;)</i> .</li></ul></div><p><img src="interval_eq78706.png" alt="$$ A.lower = \left[ \begin{tabular}{c} 1 \\ 3 \\ 5 \end{tabular} \right] $$&#xA;and $$ A.upper = \left[ \begin{tabular}{c} 2 \\ 4 \\ 6 \end{tabular} \right] $$"></p><p><i>disp(&nbsp;A&nbsp;)</i> gives:</p><p><img src="interval_eq65909.png" alt="$$ \left[ \begin{tabular}{cc} 1 &amp; 2 \\ 3 &amp; 4 \\ 5 &amp; 6 \end{tabular} \right] $$"></p><div><ul><li><b>Example 2:</b> Let us consider <i>B = interval (&nbsp;[ 1 11 ; 3 13 ; 5 15 ] , [ 2 12 ; 4 14 ; 6 16 ]&nbsp;)</i> .</li></ul></div><p><img src="interval_eq73414.png" alt="$$ B.lower = \left[ \begin{tabular}{cc} 1 &amp; 11 \\ 3 &amp; 13 \\ 5 &amp; 15 \end{tabular} \right] $$&#xA;and $$ B.upper = \left[ \begin{tabular}{cc} 2 &amp; 12 \\ 4 &amp; 14 \\ 6 &amp; 16 \end{tabular} \right] $$"></p><p><i>disp(&nbsp;B&nbsp;)</i> gives:</p><pre>(:,:,1) =</pre><p><img src="interval_eq65909.png" alt="$$ \left[ \begin{tabular}{cc} 1 &amp; 2 \\ 3 &amp; 4 \\ 5 &amp; 6 \end{tabular} \right] $$"></p><pre>(:,:,2) =</pre><p><img src="interval_eq13282.png" alt="$$ \left[ \begin{tabular}{cc} 11 &amp; 12 \\ 13 &amp; 14 \\ 15 &amp; 16 \end{tabular} \right] $$"></p><pre class="codeinput">        <span class="keyword">function</span> disp(obj)                  <span class="comment">% cf. eponymous built-in function</span>
+            s = [1 ndims(obj)+1 2:ndims(obj)] ;
+            disp([permute(obj.lower, s) permute(obj.upper, s)]) ;
+        <span class="keyword">end</span> <span class="comment">% disp</span>
+
+
+        <span class="keyword">function</span> display(obj)               <span class="comment">% cf. eponymous built-in function</span>
+            disp(obj) ;
+        <span class="keyword">end</span> <span class="comment">% display</span>
+</pre><h2>Manipulating <i>interval</i> objects as arrays<a name="13"></a></h2><p><b>subsref (&nbsp;int, s&nbsp;)</b></p><p>Overloads Matlab eponymous built-in function.</p><p><i>subsref</i> is implicitely called when indexing arrays, <i>i.e.</i> when performing <i>A (&nbsp;i&nbsp;)</i> or <i>A { i }</i>, where <i>A</i> is an array and <i>i</i> an integer. It is also called when accessing a property <i>prop</i> of an object <i>obj</i> , <i>i.e.</i> when doing <i>obj.prop</i> .</p><p>The class <i>interval</i> does not support cell indexing ( <i>s.type</i> <i>=</i> <i>'{ }'</i>&nbsp;). It allows to access the properties of any <i>interval</i> object ( <i>s.type</i> <i>=</i> <i>'.'</i> ). At last, array indexing ( <i>s.type</i> <i>=</i> <i>'(&nbsp;)'</i>&nbsp;) behaves in the same way as for arrays of scalars: indexing is propagated towards <i>upper</i> and <i>lower</i> , whose selected values are wrapped within a new <i>interval</i> object.</p><p>Multiple indexing, such as <i>int(1).lower</i> , is supported.</p><pre class="codeinput">        <span class="keyword">function</span> int = subsref(int,s)   <span class="comment">% Subscripted reference</span>
+
+            s1.type = s(1).type ;       <span class="comment">% Considers the first level of</span>
+            s1.subs = s(1).subs ;       <span class="comment">% indexing for the moment</span>
+
+            <span class="keyword">if</span> strcmp(s1.type, <span class="string">'()'</span>)    <span class="comment">% Array indexing -&gt; propagates towards</span>
+                                        <span class="comment">% lower and upper and wraps the result</span>
+                int = interval(subsref(int.lower,s1), subsref(int.upper,s1)) ;
+
+            <span class="keyword">elseif</span> strcmp(s1.type, <span class="string">'.'</span>) <span class="comment">% Property access</span>
+
+                int = builtin(<span class="string">'subsref'</span>, int, s1) ;
+
+            <span class="keyword">else</span>
+
+                error(<span class="string">'Only () and . indexing are supported'</span>) ;
+
+            <span class="keyword">end</span>
+
+            <span class="keyword">if</span> numel(s) &gt; 1             <span class="comment">% In case of multiple indexing,</span>
+                                        <span class="comment">% processes the rest of s</span>
+                int = subsref(int,s(2:end)) ;
+
+            <span class="keyword">end</span>
+
+        <span class="keyword">end</span> <span class="comment">% subsref</span>
+</pre><p><b>subsasgn (&nbsp;int, s, val&nbsp;)</b></p><p>Overloads Matlab eponymous built-in function.</p><p><i>subsasgn</i> is implicitely called when performing indexed assignment statements, <i>i.e.</i> during assignments whose left hand side involves an indexed array or object (see <i>subsref</i>&nbsp;).</p><p><i>int</i> and <i>s</i> meanings are the same as for <i>subsref</i> . <i>val</i> indicates the right hand side of the assignment.</p><pre class="codeinput">        <span class="keyword">function</span> int = subsasgn(int,s,val)      <span class="comment">% Subscripted assignment</span>
+
+            <span class="keyword">if</span> ~isempty(val)                    <span class="comment">% Makes the function work even</span>
+                                                <span class="comment">% when s and val are empty</span>
+                <span class="keyword">if</span> strcmp(s(1).type, <span class="string">'.'</span>)       <span class="comment">% Object indexing</span>
+                                                <span class="comment">%  -&gt; propagates towards target property</span>
+                    <span class="keyword">if</span> strcmp(s(1).subs,<span class="string">'lower'</span>)
+
+                        <span class="keyword">if</span> numel(s) &gt; 1
+
+                            int.lower = subsasgn(int.lower,s(2:end),val) ;
+
+                        <span class="keyword">elseif</span> isa(val,<span class="string">'interval'</span>)
+
+                            int.lower = val.lower ;
+
+                        <span class="keyword">else</span>
+
+                            int.lower = val ;
+
+                        <span class="keyword">end</span>
+
+                    <span class="keyword">elseif</span> strcmp(s(1).subs,<span class="string">'upper'</span>)
+
+                        <span class="keyword">if</span> numel(s) &gt; 1
+
+                            int.upper = subsasgn(int.upper,s(2:end),val) ;
+
+                        <span class="keyword">elseif</span> isa(val,<span class="string">'interval'</span>)
+
+                            int.upper = val.upper ;
+
+                        <span class="keyword">else</span>
+
+                            int.upper = val ;
+
+                        <span class="keyword">end</span>
+
+                    <span class="keyword">end</span>
+
+                <span class="keyword">elseif</span> strcmp(s(1).type, <span class="string">'()'</span>) <span class="comment">% Array indexing</span>
+                                               <span class="comment">%  -&gt; expands val to make it</span>
+                    <span class="keyword">if</span> numel(s) == 1           <span class="comment">%     match int dimensions</span>
+
+                        val = interval.toInterval(val) ;
+
+                    <span class="keyword">else</span>
+
+                        val = subsasgn(subsref(int,s(1)), s(2:end), val) ;
+
+                    <span class="keyword">end</span>                        <span class="comment">% Set lower and upper to their new values</span>
+
+                    int.lower = subsasgn(int.lower,s(1),val.lower) ;
+                    int.upper = subsasgn(int.upper,s(1),val.upper) ;
+
+                <span class="keyword">end</span>
+
+            <span class="keyword">end</span>
+
+        <span class="keyword">end</span> <span class="comment">% subsasgn</span>
+</pre><p><b>cat (&nbsp;dim, int...&nbsp;)</b></p><p>Overloads Matlab eponymous built-in function.</p><p><i>cat</i> concatenates the <i>interval</i> objects <i>int</i> along their <img src="interval_eq50257.png" alt="$dim^{th}$"> dimension. In fact, their properties <i>lower</i> and <i>upper</i> are concatenated in the specified way.</p><pre class="codeinput">        <span class="keyword">function</span> obj = cat(varargin)    <span class="comment">% cf. eponymous built-in function</span>
+
+            varargin(cellfun(@(X) isempty(X), varargin(:))) = {interval()} ;
+
+            <span class="keyword">if</span> min(cellfun(@(X) isa(X, <span class="string">'interval'</span>), varargin(2:nargin)))
+
+                l = cellfun(@(X) X.lower, varargin(2:nargin), <span class="string">'UniformOutput'</span>,false) ; <span class="comment">% l: only the lower bounds</span>
+                u = cellfun(@(X) X.upper, varargin(2:nargin), <span class="string">'UniformOutput'</span>,false) ; <span class="comment">% u: only the upper bounds</span>
+
+                obj = interval([]) ;
+
+                obj.lower = cat(varargin{1}, l{:}) ;    <span class="comment">% Processes concatenation</span>
+                obj.upper = cat(varargin{1}, u{:}) ;
+
+            <span class="keyword">else</span>
+
+                error(<span class="string">'Only intervals may be concatenated'</span>) ;
+
+            <span class="keyword">end</span>
+
+        <span class="keyword">end</span> <span class="comment">% cat</span>
+</pre><p><b>vertcat (&nbsp;int...&nbsp;)</b></p><p>Overloads Matlab eponymous built-in function.</p><p><i>vertcat</i> concatenates the <i>interval</i> objects <i>int</i> vertically, <i>i.e.</i> along the first dimension. Calls <i>cat (&nbsp;1, int...&nbsp;)</i> .</p><pre class="codeinput">        <span class="keyword">function</span> obj = vertcat(varargin)    <span class="comment">% cf. eponymous built-in function</span>
+            obj = cat(1,varargin{:}) ;
+        <span class="keyword">end</span> <span class="comment">% vertcat</span>
+</pre><p><b>horzcat (&nbsp;int...&nbsp;)</b></p><p>Overloads Matlab eponymous built-in function.</p><p><i>horzcat</i> concatenates the <i>interval</i> objects <i>int</i> horizontally, <i>i.e.</i> along the second dimension. Calls <i>cat (&nbsp;2, int...&nbsp;)</i> .</p><pre class="codeinput">        <span class="keyword">function</span> obj = horzcat(varargin)    <span class="comment">% cf. eponymous built-in function</span>
+            obj = cat(2,varargin{:}) ;
+        <span class="keyword">end</span> <span class="comment">% horzcat</span>
+</pre><p><b>ndims (&nbsp;int&nbsp;)</b></p><p>Overloads Matlab eponymous built-in function.</p><p><i>ndims</i> returns the number of dimensions of the <i>interval</i> object <i>int</i> , which is equal to <i>ndims (&nbsp;int.lower&nbsp;)</i> .</p><pre class="codeinput">        <span class="keyword">function</span> r = ndims(int)             <span class="comment">% cf. eponymous built-in function</span>
+            r = ndims(int.lower) ;
+        <span class="keyword">end</span> <span class="comment">% ndims</span>
+</pre><p><b>size (&nbsp;int [ , n ]&nbsp;)</b></p><p>Overloads Matlab eponymous built-in function.</p><p>Returns the size of <i>interval</i> object <i>int</i> , <i>i.e.</i> that of <i>int.lower</i> . If <i>n</i> is specified, returns the depth of <i>int</i> along its <img src="interval_eq95693.png" alt="$n^{th}$"> dimension. Otherwise, returns a vector containing the size of <i>int</i> along its <img src="interval_eq79464.png" alt="$i^{th}$"> dimension for each <i>i</i> between 1 and <i>ndims(int)</i> . If one output or less is required ( <i>nargout &lt; 2</i> ), this vector takes the form of a row vector of integers. Otherwise, it returns each component of this vector in distinct scalar outputs.</p><p>Example 1: <i>s = size (&nbsp;interval (&nbsp;[ 1 2 ; 3 4]&nbsp;)&nbsp;)</i> returns <i>s = [ 2, 1 ]</i>            (<i>nargout</i> = 1).</p><p>Example 2: <i>[n, m] = size (&nbsp;interval (&nbsp;[ 1 2 ; 3 4 ]&nbsp;)&nbsp;)</i> returns            <i>n = 2</i> and <i>m = 1</i>.</p><pre class="codeinput">        <span class="keyword">function</span> varargout = size(varargin) <span class="comment">% cf. eponymous built-in function</span>
+            <span class="keyword">if</span> nargout &lt; 2
+                varargout = {size(varargin{1}.lower,varargin{2:nargin})} ;
+            <span class="keyword">else</span>
+                varargout = num2cell(size(varargin{1}.lower,varargin{2:nargin})) ;
+            <span class="keyword">end</span>
+        <span class="keyword">end</span> <span class="comment">% size</span>
+</pre><p><b>permute (&nbsp;a , order&nbsp;)</b></p><p>Overloads Matlab eponymous built-in function.</p><p>P&euml;rmutes the dimensions of <i>lower</i> and <i>upper</i> as specified.</p><pre class="codeinput">        <span class="keyword">function</span> a = permute(a, order)
+            a.lower = permute(a.lower, order) ;
+            a.upper = permute(a.upper, order) ;
+        <span class="keyword">end</span> <span class="comment">% permute</span>
+</pre><p><b>repmat ( a, i, j )</b></p><p>Overloads Matlab <i>repmat</i> function for <i>interval</i> arrays.</p><pre class="codeinput">        <span class="keyword">function</span> r = repmat(a, i, j)
+            r = interval(repmat(a.lower, i, j), repmat(a.upper, i, j)) ;
+        <span class="keyword">end</span> <span class="comment">% repmat</span>
+</pre><p><b>isempty ( obj )</b></p><p>Tells whether <i>interval</i> array <i>a</i> is empty or not.</p><pre class="codeinput">        <span class="keyword">function</span> a = isempty(a)
+            a = isempty(a.lower) ;
+        <span class="keyword">end</span> <span class="comment">% isempty</span>
+</pre><p><b>cell( varargin )</b></p><p>Overloads Matlab <i>num2cell</i> function for <i>interval</i> arrays (alternative to <i>num2cell</i>).</p><pre class="codeinput">        <span class="keyword">function</span> varargout = cell(varargin)
+
+            <span class="keyword">if</span> nargin &gt; 0
+
+                obj = varargin{1} ;
+
+                varargout = cellfun(@(x,y) interval(x,y),<span class="keyword">...</span>
+                                        num2cell(obj.lower, varargin{2:end}),<span class="keyword">...</span>
+                                        num2cell(obj.upper, varargin{2:end}),<span class="keyword">...</span>
+                                        <span class="string">'UniformOutput'</span>, false) ;
+
+            <span class="keyword">else</span>
+
+                varargout = {} ;
+
+            <span class="keyword">end</span>
+
+        <span class="keyword">end</span> <span class="comment">% cell</span>
+</pre><p><b>num2cell ( varargin )</b></p><p>Overloads Matlab <i>num2cell</i> function for <i>interval</i> arrays.</p><pre class="codeinput">        <span class="keyword">function</span> varargout = num2cell(varargin)
+
+            <span class="keyword">if</span> nargin &gt; 0
+
+                obj = varargin{1} ;
+
+                varargout = cellfun(@(x,y) interval(x,y),<span class="keyword">...</span>
+                                        num2cell(obj.lower, varargin{2:end}),<span class="keyword">...</span>
+                                        num2cell(obj.upper, varargin{2:end}),<span class="keyword">...</span>
+                                        <span class="string">'UniformOutput'</span>, false) ;
+
+            <span class="keyword">else</span>
+
+                varargout = {} ;
+
+            <span class="keyword">end</span>
+
+        <span class="keyword">end</span> <span class="comment">% num2cell</span>
+</pre><h2>Performing arithmetic operations<a name="26"></a></h2><p>The class <i>interval</i> is designed to process intervals vectorially. As a consequence, it considers only element-wise operations: matricial computations are not supported. However, Matlab matricial operators, such as '&nbsp;*&nbsp;' or '&nbsp;/&nbsp;' , may be used indifferently instead of their element-wise variants, '&nbsp;.*&nbsp;' for '&nbsp;*&nbsp;' and '&nbsp;./&nbsp;' for '&nbsp;/&nbsp;'&nbsp;.</p><p>Interval arithmetic operators are rather supposed to be passed interval objects. However, they also accept arrays of doubles. In that case, an <i>interval</i> object is instantiated from an array of doubles with the default constructor (only one argument).</p><p>In addition, every binary arithmetic operator supports singleton expansion (see also Matlab buit-in function <i>bsxfun</i>&nbsp;).</p><p>As a result, it is fully possible to write instructions like:</p><pre>interval([1 2 ; 3 4]) + 1</pre><p>which returns a 2-by-1 <i>interval</i> object containing the intervals [2, 3] and [4, 5].</p><p><b>plus (&nbsp;a, b&nbsp;)</b></p><p>Overloads Matlab operator " + "&nbsp;:</p><pre>a + b = plus(a,b)</pre><p>Element-wise addition of the intervals contained in <i>a</i> and <i>b</i> .</p><pre class="codeinput">        <span class="keyword">function</span> r = plus(a, b)
+
+            a = interval.toInterval(a) ;                <span class="comment">% Ensures a and b are interval objects</span>
+            b = interval.toInterval(b) ;
+
+            rlower = bsxfun(@plus, a.lower, b.lower) ;  <span class="comment">% Processes lower and upper bounds</span>
+            rupper = bsxfun(@plus, a.upper, b.upper) ;
+
+            undef = isnan(rlower) | isnan(rupper) ;     <span class="comment">% Deals with nan values</span>
+
+            rlower(undef) = nan ;
+            rupper(undef) = nan ;
+
+            r = a ;
+
+            r.lower = rlower ;
+            r.upper = rupper ;
+
+        <span class="keyword">end</span> <span class="comment">% plus</span>
+</pre><p><b>minus (&nbsp;a, b&nbsp;)</b></p><p>Overloads Matlab operator " - "&nbsp;:</p><pre>a - b = minus(a,b)</pre><p>Element-wise subtraction between the intervals contained in <i>a</i> and <i>b</i> .</p><pre class="codeinput">        <span class="keyword">function</span> r = minus(a, b)
+
+            a = interval.toInterval(a) ;                <span class="comment">% Ensures a and b are interval objects</span>
+            b = interval.toInterval(b) ;
+
+            rlower = bsxfun(@minus, a.lower, b.upper) ; <span class="comment">% Processes lower and upper bounds</span>
+            rupper = bsxfun(@minus, a.upper, b.lower) ;
+
+            undef = isnan(rlower) | isnan(rupper) ;     <span class="comment">% Deals with nan values</span>
+
+            rlower(undef) = nan ;
+            rupper(undef) = nan ;
+
+            r = a ;
+
+            r.lower = rlower ;
+            r.upper = rupper ;
+
+        <span class="keyword">end</span> <span class="comment">% minus</span>
+</pre><p><b>uminus (&nbsp;a&nbsp;)</b></p><p>Overloads Matlab unary operator " - "&nbsp;:</p><pre>-a = uminus(a)</pre><p>Element-wise unary minus performed on the intervals contained in <i>a</i> .</p><pre class="codeinput">        <span class="keyword">function</span> r = uminus(a)
+            r = interval(-a.upper, -a.lower) ;
+        <span class="keyword">end</span> <span class="comment">% uminus</span>
+</pre><p><b>uplus (&nbsp;a&nbsp;)</b></p><p>Overloads Matlab unary operator " + "&nbsp;:</p><pre>+a = uplus(a) (&nbsp;= a)</pre><p>Element-wise unary plus performed on the intervals contained in <i>a</i> .</p><pre class="codeinput">        <span class="keyword">function</span> a = uplus(a)
+        <span class="keyword">end</span> <span class="comment">% uplus</span>
+</pre><p><b>times (&nbsp;a, b&nbsp;)</b></p><p>Overloads Matlab operator " .* "&nbsp;:</p><pre>a .* b = times(a,b) = mtimes(a,b)</pre><p>Element-wise multiplication between the intervals contained in <i>a</i> and <i>b</i> .</p><pre class="codeinput">        <span class="keyword">function</span> r = times(a,b)
+
+            a = interval.toInterval(a) ;    <span class="comment">% Ensures a and b are interval objects</span>
+            b = interval.toInterval(b) ;
+
+            alower = a.lower ;              <span class="comment">% Uses local variables to store the bounds</span>
+            aupper = a.upper ;              <span class="comment">% of the operands (up to 4 times faster)</span>
+            blower = b.lower ;
+            bupper = b.upper ;
+
+            <span class="comment">% Expands singleton dimensions if needed</span>
+
+            <span class="keyword">if</span> (ndims(alower) ~= ndims(blower)) || any(size(alower) ~= size(blower))
+                sa = size(alower) ;
+                sb = size(blower) ;
+                sae = sb ;
+                sbe = sa ;
+                sae(sa ~= 1) = 1 ;
+                sbe(sb ~= 1) = 1 ;
+                alower = repmat(alower, sae) ;
+                aupper = repmat(aupper, sae) ;
+                blower = repmat(blower, sbe) ;
+                bupper = repmat(bupper, sbe) ;
+            <span class="keyword">end</span>
+
+            <span class="comment">% Creates logical indexes to distinguish different cases during</span>
+            <span class="comment">% the computation, depending on the sign of the bounds of a and b</span>
+
+            alp = alower &gt;= 0 ;             <span class="comment">% Sign of the bounds of a and b</span>
+            aup = aupper &gt;= 0 ;
+            blp = blower &gt;= 0 ;
+            bup = bupper &gt;= 0 ;
+
+            aln = ~alp ;
+            aun = ~aup ;
+            bln = ~blp ;
+            bun = ~bup ;
+
+            app = alp &amp; aup ;
+            apn = alp &amp; aun ;
+            anp = aln &amp; aup ;
+            ann = aln &amp; aun ;
+
+            bpp = blp &amp; bup ;
+            bpn = blp &amp; bun ;
+            bnp = bln &amp; bup ;
+            bnn = bln &amp; bun ;
+
+            <span class="comment">% Spots nan values in a and b</span>
+
+            undef = isnan(alower) | isnan(aupper) | isnan(blower) | isnan(bupper) ;
+
+            <span class="comment">% Preallocates the result, then starts the multiplication</span>
+
+            rlower = alower ;
+            rupper = rlower ;
+
+            <span class="comment">% Let us set down a = [a- a+] and b = [b- b+]</span>
+
+            <span class="comment">% Case 1 (a- &gt;= 0, a+ &gt;= 0, b- &gt;= 0, b+ &gt;= 0)</span>
+
+            i = app &amp; bpp ;
+
+            rlower(i) = alower(i) .* blower(i) ;
+            rupper(i) = aupper(i) .* bupper(i) ;
+
+            <span class="comment">% Case 2 (a- &gt;= 0, a+ &gt;= 0, b- &gt;= 0, b+ &lt; 0)</span>
+
+            i = app &amp; bpn ;
+
+            rlower(i) = alower(i) .* blower(i) ;
+            rupper(i) = alower(i) .* bupper(i) ;
+
+            <span class="comment">% Case 3 (a- &gt;= 0, a+ &gt;= 0, b- &lt; 0, b+ &gt;= 0)</span>
+
+            i = app &amp; bnp ;
+
+            rlower(i) = aupper(i) .* blower(i) ;
+            rupper(i) = aupper(i) .* bupper(i) ;
+
+            <span class="comment">% Case 4 (a- &gt;= 0, a+ &gt;= 0, b- &lt; 0, b+ &lt; 0)</span>
+
+            i = app &amp; bnn ;
+
+            rlower(i) = aupper(i) .* blower(i) ;
+            rupper(i) = alower(i) .* bupper(i) ;
+
+            <span class="comment">% Case 5 (a- &gt;= 0, a+ &lt; 0, b- &gt;= 0, b+ &gt;= 0)</span>
+
+            i = apn &amp; bpp ;
+
+            rlower(i) = alower(i) .* blower(i) ;
+            rupper(i) = aupper(i) .* blower(i) ;
+
+            <span class="comment">% Case 6 (a- &gt;= 0, a+ &lt; 0, b- &gt;= 0, b+ &lt; 0)</span>
+
+            i = apn &amp; bpn ;
+
+            rlower(i) = max(alower(i) .* blower(i), aupper(i) .* bupper(i)) ;
+            rupper(i) = min(alower(i) .* bupper(i), aupper(i) .* blower(i)) ;
+
+            <span class="comment">% Case 7 (a- &gt;= 0, a+ &lt; 0, b- &lt; 0, b+ &gt;= 0)</span>
+
+            i = apn &amp; bnp ;
+
+            rlower(i) = 0 ;
+            rupper(i) = 0 ;
+
+            <span class="comment">% Case 8 (a- &gt;= 0, a+ &lt; 0, b- &lt; 0, b+ &lt; 0)</span>
+
+            i = apn &amp; bnn ;
+
+            rlower(i) = aupper(i) .* bupper(i) ;
+            rupper(i) = alower(i) .* bupper(i) ;
+
+            <span class="comment">% Case 9 (a- &lt; 0, a+ &gt;= 0, b- &gt;= 0, b+ &gt;= 0)</span>
+
+            i = anp &amp; bpp ;
+
+            rlower(i) = alower(i) .* bupper(i) ;
+            rupper(i) = aupper(i) .* bupper(i) ;
+
+            <span class="comment">% Case 10 (a- &lt; 0, a+ &gt;= 0, b- &gt;= 0, b+ &lt; 0)</span>
+
+            i = anp &amp; bpn ;
+
+            rlower(i) = 0 ;
+            rupper(i) = 0 ;
+
+            <span class="comment">% Case 11 (a- &lt; 0, a+ &gt;= 0, b- &lt; 0, b+ &gt;= 0)</span>
+
+            i = anp &amp; bnp ;
+
+            rlower(i) = min(alower(i) .* bupper(i), aupper(i) .* blower(i)) ;
+            rupper(i) = max(alower(i) .* blower(i), aupper(i) .* bupper(i)) ;
+
+            <span class="comment">% Case 12 (a- &lt; 0, a+ &gt;= 0, b- &lt; 0, b+ &lt; 0)</span>
+
+            i = anp &amp; bnn ;
+
+            rlower(i) = aupper(i) .* blower(i) ;
+            rupper(i) = alower(i) .* blower(i) ;
+
+            <span class="comment">% Case 13 (a- &lt; 0, a+ &lt; 0, b- &gt;= 0, b+ &gt;= 0)</span>
+
+            i = ann &amp; bpp ;
+
+            rlower(i) = alower(i) .* bupper(i) ;
+            rupper(i) = aupper(i) .* blower(i) ;
+
+            <span class="comment">% Case 14 (a- &lt; 0, a+ &lt; 0, b- &gt;= 0, b+ &lt; 0)</span>
+
+            i = ann &amp; bpn ;
+
+            rlower(i) = aupper(i) .* bupper(i) ;
+            rupper(i) = aupper(i) .* blower(i) ;
+
+            <span class="comment">% Case 15 (a- &lt; 0, a+ &lt; 0, b- &lt; 0, b+ &gt;= 0)</span>
+
+            i = ann &amp; bnp ;
+
+            rlower(i) = alower(i) .* bupper(i) ;
+            rupper(i) = alower(i) .* blower(i) ;
+
+            <span class="comment">% Case 16 (a- &lt; 0, a+ &lt; 0, b- &lt; 0, b+ &lt; 0)</span>
+
+            i = ann &amp; bnn ;
+
+            rlower(i) = aupper(i) .* bupper(i) ;
+            rupper(i) = alower(i) .* blower(i) ;
+
+            <span class="comment">% Deals with nan values</span>
+
+            rlower(undef) = nan ;
+            rupper(undef) = nan ;
+
+            <span class="comment">% Fast assembling of the result</span>
+
+            r = a ;
+
+            r.lower = rlower ;
+            r.upper = rupper ;
+
+        <span class="keyword">end</span> <span class="comment">% times</span>
+</pre><p><b>mtimes (&nbsp;a, b&nbsp;)</b></p><p>Overloads Matlab operator " * "&nbsp;:</p><pre>a * b = mtimes(a,b) = times(a,b)</pre><p>Element-wise multiplication between the intervals contained in <i>a</i> and <i>b</i> .</p><pre class="codeinput">        <span class="keyword">function</span> r = mtimes(a,b)
+            r = times(a,b) ;
+        <span class="keyword">end</span> <span class="comment">% times</span>
+</pre><p><b>rdivide (&nbsp;a, b&nbsp;)</b></p><p>Overloads Matlab operator " ./ "&nbsp;:</p><pre>a ./ b = rdivide(a,b) = mrdivide(a,b)</pre><p>Element-wise multiplication between the intervals contained in <i>a</i> and <i>b</i> .</p><pre class="codeinput">        <span class="keyword">function</span> r = rdivide(a,b)
+
+            a = interval.toInterval(a) ;    <span class="comment">% Ensures a and b are interval objects</span>
+            b = interval.toInterval(b) ;
+
+            alower = a.lower ;              <span class="comment">% Uses local variables to store the bounds</span>
+            aupper = a.upper ;              <span class="comment">% of the operands (up to 4 times faster)</span>
+            blower = b.lower ;
+            bupper = b.upper ;
+
+            <span class="comment">% Expands singleton dimensions if needed</span>
+
+            <span class="keyword">if</span> (ndims(alower) ~= ndims(blower)) || any(size(alower) ~= size(blower))
+                alower = bsxfun(@plus, alower, zeros(size(blower))) ;
+                aupper = bsxfun(@plus, aupper, zeros(size(bupper))) ;
+                blower = bsxfun(@plus, blower, zeros(size(alower))) ;
+                bupper = bsxfun(@plus, bupper, zeros(size(aupper))) ;
+            <span class="keyword">end</span>
+
+            <span class="comment">% Creates logical indexes to distinguish different cases during</span>
+            <span class="comment">% the computation, depending on the sign of the bounds of a and</span>
+            <span class="comment">% b, as well as the zeros of b</span>
+
+            alp = alower &gt;= 0 ;
+            aup = aupper &gt;= 0 ;
+            blp = blower &gt;  0 ;
+            bup = bupper &gt;  0 ;
+
+            aln = ~alp ;
+            aun = ~aup ;
+
+            bln = blower &lt; 0 ;
+            bun = bupper &lt; 0 ;
+
+            blz = blower == 0 ;
+            buz = bupper == 0 ;
+
+            bluz = (blp &amp; bun) | (bln &amp; bup) ;  <span class="comment">% b contains 0</span>
+
+            pppp = alp &amp; aup &amp; blp &amp; bup ;
+            ppnn = alp &amp; aup &amp; bln &amp; bun ;
+            pnpp = alp &amp; aun &amp; blp &amp; bup ;
+            pnnn = alp &amp; aun &amp; bln &amp; bun ;
+            nppp = aln &amp; aup &amp; blp &amp; bup ;
+            npnn = aln &amp; aup &amp; bln &amp; bun ;
+            nnpp = aln &amp; aun &amp; blp &amp; bup ;
+            nnnn = aln &amp; aun &amp; bln &amp; bun ;
+            pppz = alp &amp; aup &amp; blp &amp; buz ;
+            ppzp = alp &amp; aup &amp; blz &amp; bup ;
+            ppnz = alp &amp; aup &amp; bln &amp; buz ;
+            ppzn = alp &amp; aup &amp; blz &amp; bun ;
+            pnpz = alp &amp; aun &amp; blp &amp; buz ;
+            pnzp = alp &amp; aun &amp; blz &amp; bup ;
+            pnnz = alp &amp; aun &amp; bln &amp; buz ;
+            pnzn = alp &amp; aun &amp; blz &amp; bun ;
+            nppz = aln &amp; aup &amp; blp &amp; buz ;
+            npzp = aln &amp; aup &amp; blz &amp; bup ;
+            npnz = aln &amp; aup &amp; bln &amp; buz ;
+            npzn = aln &amp; aup &amp; blz &amp; bun ;
+            nnpz = aln &amp; aun &amp; blp &amp; buz ;
+            nnzp = aln &amp; aun &amp; blz &amp; bup ;
+            nnnz = aln &amp; aun &amp; bln &amp; buz ;
+            nnzn = aln &amp; aun &amp; blz &amp; bun ;
+
+            <span class="comment">% Spots nan values in a and b</span>
+
+            undef = isnan(alower) | isnan(aupper) | isnan(blower) | isnan(bupper) ;
+
+            <span class="comment">% Preallocates the result, then starts the division</span>
+
+            rlower = alower ;
+            rupper = aupper ;
+
+            <span class="comment">% Let us set down a = [a- a+] and b = [b- b+]</span>
+
+            <span class="comment">% Case 1 (a- &gt;= 0, a+ &gt;= 0, b- &gt; 0, b+ &gt; 0)</span>
+
+            rlower(pppp) = alower(pppp) ./ bupper(pppp) ;
+            rupper(pppp) = aupper(pppp) ./ blower(pppp) ;
+
+            <span class="comment">% Case 2 (a- &gt;= 0, a+ &gt;= 0, b- &lt; 0, b+ &lt; 0)</span>
+
+            rlower(ppnn) = aupper(ppnn) ./ bupper(ppnn) ;
+            rupper(ppnn) = alower(ppnn) ./ blower(ppnn) ;
+
+            <span class="comment">% Case 3 (a- &gt;= 0, a+ &lt; 0, b- &gt; 0, b+ &gt; 0)</span>
+
+            rlower(pnpp) = alower(pnpp) ./ bupper(pnpp) ;
+            rupper(pnpp) = aupper(pnpp) ./ bupper(pnpp) ;
+
+            <span class="comment">% Case 4 (a- &gt;= 0, a+ &lt; 0, b- &lt; 0, b+ &lt; 0)</span>
+
+            rlower(pnnn) = aupper(pnnn) ./ blower(pnnn) ;
+            rupper(pnnn) = alower(pnnn) ./ blower(pnnn) ;
+
+            <span class="comment">% Case 5 (a- &lt; 0, a+ &gt;= 0, b- &gt; 0, b+ &gt; 0)</span>
+
+            rlower(nppp) = alower(nppp) ./ blower(nppp) ;
+            rupper(nppp) = aupper(nppp) ./ blower(nppp) ;
+
+            <span class="comment">% Case 6 (a- &lt; 0, a+ &gt;= 0, b- &lt; 0, b+ &lt; 0)</span>
+
+            rlower(npnn) = aupper(npnn) ./ bupper(npnn) ;
+            rupper(npnn) = alower(npnn) ./ bupper(npnn) ;
+
+            <span class="comment">% Case 7 (a- &lt; 0, a+ &lt; 0, b- &gt; 0, b+ &gt; 0)</span>
+
+            rlower(nnpp) = alower(nnpp) ./ blower(nnpp) ;
+            rupper(nnpp) = aupper(nnpp) ./ bupper(nnpp) ;
+
+            <span class="comment">% Case 8 (a- &lt; 0, a+ &lt; 0, b- &lt; 0, b+ &lt; 0)</span>
+
+            rlower(nnnn) = aupper(nnnn) ./ blower(nnnn) ;
+            rupper(nnnn) = alower(nnnn) ./ bupper(nnnn) ;
+
+            <span class="comment">% Case 9 (b contains 0 but 0 is not a bound of b)</span>
+
+            int0 = bluz | (blz &amp; buz) ;
+
+            rlower(int0) = nan ;
+            rupper(int0) = nan ;
+
+            <span class="comment">% Case 10 (a- &gt;= 0, a+ &gt;= 0, b- &gt; 0, b+ == 0)</span>
+
+            rlower(pppz) = inf ;
+            rupper(pppz) = a.upper(pppz) ./ blower(pppz) ;
+
+            <span class="comment">% Case 11 (a- &gt;= 0, a+ &gt;= 0, b- == 0, b+ &gt; 0)</span>
+
+            rlower(ppzp) = alower(ppzp) ./ bupper(ppzp) ;
+            rupper(ppzp) = inf ;
+
+            <span class="comment">% Case 12 (a- &gt;= 0, a+ &gt;= 0, b- &lt; 0, b+ == 0)</span>
+
+            rlower(ppnz) = -inf ;
+            rupper(ppnz) = alower(ppnz) ./ blower(ppnz) ;
+
+            <span class="comment">% Case 13 (a- &gt;= 0, a+ &gt;= 0, b- == 0, b+ &lt; 0)</span>
+
+            rlower(ppzn) = aupper(ppzn) ./ bupper(ppzn) ;
+            rupper(ppzn) = -inf ;
+
+            <span class="comment">% Case 14 (a- &gt;= 0, a+ &lt; 0, b- &gt; 0, b+ == 0)</span>
+
+            rlower(pnpz) = inf ;
+            rupper(pnpz) = -inf ;
+
+            <span class="comment">% Case 15 (a- &gt;= 0, a+ &lt; 0, b- == 0, b+ &gt; 0)</span>
+
+            rlower(pnzp) = alower(pnzp) ./ bupper(pnzp) ;
+            rupper(pnzp) = aupper(pnzp) ./ bupper(pnzp) ;
+
+            <span class="comment">% Case 16 (a- &gt;= 0, a+ &lt; 0, b- &lt; 0, b+ == 0)</span>
+
+            rlower(pnnz) = aupper(pnnz) ./ blower(pnnz) ;
+            rupper(pnnz) = alower(pnnz) ./ blower(pnnz) ;
+
+            <span class="comment">% Case 17 (a- &gt;= 0, a+ &lt; 0, b- == 0, b+ &lt; 0)</span>
+
+            rlower(pnzn) = inf ;
+            rupper(pnzn) = -inf ;
+
+            <span class="comment">% Case 18 (a- &lt; 0, a+ &gt;= 0, b- &gt; 0, b+ == 0)</span>
+
+            rlower(nppz) = alower(nppz) ./ blower(nppz) ;
+            rupper(nppz) = aupper(nppz) ./ blower(nppz) ;
+
+            <span class="comment">% Case 19 (a- &lt; 0, a+ &gt;= 0, b- == 0, b+ &gt; 0)</span>
+
+            rlower(npzp) = -inf ;
+            rupper(npzp) = inf ;
+
+            <span class="comment">% Case 20 (a- &lt; 0, a+ &gt;= 0, b- &lt; 0, b+ == 0)</span>
+
+            rlower(npnz) = -inf ;
+            rupper(npnz) = inf ;
+
+            <span class="comment">% Case 21 (a- &lt; 0, a+ &gt;= 0, b- == 0, b+ &lt; 0)</span>
+
+            rlower(npzn) = aupper(npzn) ./ bupper(npzn) ;
+            rupper(npzn) = alower(npzn) ./ bupper(npzn) ;
+
+            <span class="comment">% Case 22 (a- &lt; 0, a+ &lt; 0, b- &gt; 0, b+ == 0)</span>
+
+            rlower(nnpz) = alower(nnpz) ./ blower(nnpz) ;
+            rupper(nnpz) = -inf ;
+
+            <span class="comment">% Case 23 (a- &lt; 0, a+ &lt; 0, b- == 0, b+ &gt; 0)</span>
+
+            rlower(nnzp) = -inf ;
+            rupper(nnzp) = aupper(nnzp) ./ bupper(nnzp) ;
+
+            <span class="comment">% Case 25 (a- &lt; 0, a+ &lt; 0, b- &lt; 0, b+ == 0)</span>
+
+            rlower(nnnz) = aupper(nnnz) ./ blower(nnnz) ;
+            rupper(nnnz) = inf ;
+
+            <span class="comment">% Case 26 (a- &lt; 0, a+ &lt; 0, b- == 0, b+ &lt; 0)</span>
+
+            rlower(nnzn) = inf ;
+            rupper(nnzn) = alower(nnzn) ./ bupper(nnzn) ;
+
+            <span class="comment">% Deals with nan values</span>
+
+            rlower(undef) = nan ;
+            rupper(undef) = nan ;
+
+            <span class="comment">% Fast assembling of the result</span>
+
+            r = a ;
+
+            r.lower = rlower ;
+            r.upper = rupper ;
+
+        <span class="keyword">end</span> <span class="comment">% rdivide</span>
+</pre><p><b>mrdivide (&nbsp;a, b&nbsp;)</b></p><p>Overloads Matlab operator " / "&nbsp;:</p><pre>a / b = mrdivide(a,b) = rdivide(a,b)</pre><p>Element-wise multiplication between the intervals contained in <i>a</i> and <i>b</i> .</p><pre class="codeinput">        <span class="keyword">function</span> r = mrdivide(a,b)
+            r = rdivide(a,b) ;
+        <span class="keyword">end</span> <span class="comment">% mrdivide</span>
+</pre><p><b>power (&nbsp;a, n&nbsp;)</b></p><p>Overloads Matlab operator " .^ "&nbsp;:</p><pre>a.^n = power(a,n) = mpower(a,n)</pre><p>Element-wise power function. <i>n</i> must be a real number.</p><pre class="codeinput">        <span class="keyword">function</span> a = power(a,n)
+
+            <span class="keyword">if</span> n &lt; 0                        <span class="comment">% If n is negative, comes down to the positive case</span>
+
+                a = 1/power(a, -n) ;
+
+            <span class="keyword">elseif</span> n~= 1                    <span class="comment">% n = 1: a^1 = a (no computation is required)</span>
+
+                <span class="keyword">if</span> n == round(n)            <span class="comment">% n is a positive integer</span>
+
+                    <span class="keyword">if</span> mod(n,2) == 1        <span class="comment">% n is odd, x |-&gt; x^n increases on R</span>
+
+                        a.lower = power(a.lower, n) ;
+                        a.upper = power(a.upper, n) ;
+
+                    <span class="keyword">elseif</span> n == 0           <span class="comment">% n = 0&nbsp;: a^0 = 1</span>
+
+                        a = interval(ones(size(a)), [], 0) ;
+
+                    <span class="keyword">elseif</span> n == 2           <span class="comment">% n = 2 (sqr is faster than a generic implementation)</span>
+
+                        a = sqr(a) ;
+
+                    <span class="keyword">else</span>                    <span class="comment">% n is even (and positive)</span>
+
+                        alp = a.lower &gt;= 0 ;
+                        aup = a.upper &gt;= 0 ;
+
+                        aln = a.lower &lt;= 0 ;
+                        aun = a.upper &lt;= 0 ;
+
+                        pp = alp &amp; aup ;
+                        nn = aln &amp; aun ;
+                        np = aln &amp; aup ;
+                        pn = alp &amp; aun ;
+
+                        a.lower(pp) = power(a.lower(pp),n) ;
+                        a.upper(pp) = power(a.upper(pp),n) ;
+
+                        alowernn = power(a.upper(nn),n) ;
+                        a.upper(nn) = power(a.lower(nn),n) ;
+                        a.lower(nn) = alowernn ;
+
+                        a.upper(np) = max(power(a.lower(np),n), power(a.upper(np),n)) ;
+                        a.lower(np) = 0 ;
+
+                        a.lower(pn) = max(power(a.lower(pn),n), power(a.upper(pn),n)) ;
+                        a.upper(pn) = 0 ;
+
+                    <span class="keyword">end</span>
+
+                <span class="keyword">else</span>                        <span class="comment">% n is a non-integer positive real</span>
+                                            <span class="comment">% x |-&gt; x^n increases on R+</span>
+                    alp = a.lower &gt;= 0 ;
+                    aup = a.upper &gt;= 0 ;
+
+                    a.lower(alp) = power(a.lower(alp), n) ;
+                    a.upper(aup) = power(a.upper(aup), n) ;
+
+                    a.lower(~alp) = nan ;
+                    a.upper(~aup) = nan ;
+
+                <span class="keyword">end</span>
+
+            <span class="keyword">end</span>
+
+        <span class="keyword">end</span> <span class="comment">% power</span>
+</pre><p><b>mpower (&nbsp;a, n&nbsp;)</b></p><p>Overloads Matlab operator " ^ "&nbsp;:</p><pre>a^n = mpower(a,n) = power(a,n)</pre><p>Element-wise power function. <i>n</i> must be a real number.</p><pre class="codeinput">        <span class="keyword">function</span> r = mpower(a,b)
+            a = interval.toInterval(a) ;
+            r = power(a,b) ;
+        <span class="keyword">end</span> <span class="comment">% mpower</span>
+</pre><p><b>sqr(a)</b></p><p>Square function, called by <i>power</i> and <i>mpower</i> when <i>n = 2</i> (faster than a generic implementation dealing with any <i>n</i> ).</p><pre class="codeinput">        <span class="keyword">function</span> r = sqr(r)
+
+            a = r.lower ;                           <span class="comment">% Extracts the lower bounds (an array of doubles)</span>
+            b = r.upper ;                           <span class="comment">% Extracts the upper bounds (an array of doubles)</span>
+
+            k = (a &gt;= 0) &amp; (b &gt;= 0) ;               <span class="comment">% Case 1: a &gt;= 0 and b &gt;= 0</span>
+
+            r.lower(k) = a(k).^2 ;
+            r.upper(k) = b(k).^2 ;
+
+            k = (a &lt;= 0) &amp; (b &gt;= 0) ;               <span class="comment">% Case 2: a &lt;= 0 and b &gt;= 0</span>
+
+            r.lower(k) = 0 ;
+            r.upper(k) = max(-a(k),b(k)).^2 ;
+
+            k = (a &gt;= 0) &amp; (b &lt;= 0) ;               <span class="comment">% Case 3: a &gt;= 0 and b &lt;= 0</span>
+
+            r.lower(k) = max(a(k),-b(k)).^2 ;
+            r.upper(k) = 0 ;
+
+            k = (a &lt;= 0) &amp; (b &lt;= 0) ;               <span class="comment">% Case 4: a &lt;= 0 and b &lt;= 0</span>
+
+            r.lower(k) = b(k).^2 ;
+            r.upper(k) = a(k).^2 ;
+
+        <span class="keyword">end</span> <span class="comment">% sqr</span>
+</pre><p><b>sqrt ( r, varargin )</b></p><p>Element-wise square root operation.</p><p>The domain of the result may be restricted by giving an hint about its sign in <i>varargin</i> in the following way:  * 'p' if the result is known to be positive  * 'n' if the result is known to be negative</p><p>The <i>varargin</i> parameter may be ommitted in case no information is known about the sign of the result.</p><pre class="codeinput">        <span class="keyword">function</span> r = sqrt(r, varargin)
+
+            <span class="keyword">if</span> nargin == 1
+
+                r = join(sqrt(r,<span class="string">'p'</span>), sqrt(r,<span class="string">'n'</span>)) ;
+
+            <span class="keyword">else</span>
+
+                lp = (r.lower &gt;= 0) ;
+                ln = (r.lower &lt;  0) ;
+                up = (r.upper &gt;= 0) ;
+                un = (r.upper &lt;  0) ;
+
+                p = varargin{1} ;
+
+                <span class="keyword">if</span> isa(p, <span class="string">'char'</span>)
+
+                    <span class="keyword">if</span> p == <span class="string">'p'</span>
+
+                        r.lower(lp) = sqrt(r.lower(lp)) ;
+                        r.upper(up) = sqrt(r.upper(up)) ;
+
+                        r.lower(ln) = nan ;
+                        r.upper(un) = nan ;
+
+                    <span class="keyword">elseif</span> p == <span class="string">'n'</span>
+
+                        [r.lower(lp), r.upper(up)] = deal(-sqrt(r.upper(lp)), -sqrt(r.lower(up))) ;
+
+                        r.lower(ln) = nan ;
+                        r.upper(un) = nan ;
+
+                    <span class="keyword">end</span>
+
+                <span class="keyword">else</span>
+
+                    pos = p &gt;= 0 ;
+                    neg = p &lt;= 0 ;
+                    und = ~(pos|neg) ;
+
+                    s.type = <span class="string">'()'</span> ;
+                    s.subs = {pos} ;
+
+                    r = subsasgn(r,s,sqrt(subsref(r,s), <span class="string">'p'</span>)) ;
+
+                    s.subs = {neg} ;
+
+                    r = subsasgn(r,s,sqrt(subsref(r,s), <span class="string">'n'</span>)) ;
+
+                    s.subs = {und} ;
+
+                    r = subsasgn(r,s,sqrt(subsref(r,s))) ;
+
+                <span class="keyword">end</span>
+
+            <span class="keyword">end</span>
+
+        <span class="keyword">end</span> <span class="comment">% sqrt</span>
+</pre><p><b>nthroot ( r, n, varargin )</b></p><p>Element-wise nth root operation.</p><p>The domain of the result may be restricted by giving an hint about its sign in <i>varargin</i> in the following way:  * 'p' if the result is known to be positive  * 'n' if the result is known to be negative</p><p>The <i>varargin</i> parameter may be ommitted in case no information is known about the sign of the result.</p><pre class="codeinput">        <span class="keyword">function</span> r = nthroot(r, n, varargin)
+
+            <span class="keyword">if</span> n ~= round(n)                <span class="comment">% Checks whether n is an integer</span>
+
+                error(<span class="string">'n must be an integer'</span>) ;
+
+            <span class="keyword">elseif</span> n &lt; 0                    <span class="comment">% n is negative -&gt; comes down to positive case</span>
+
+                r = 1/nthroot(r, -n, varargin{:}) ;
+
+            <span class="keyword">elseif</span> n == 2                   <span class="comment">% n = 2&nbsp;: uses sqrt (faster)</span>
+
+                r = sqrt(r, varargin{:}) ;
+
+            <span class="keyword">elseif</span> mod(n,2) == 0            <span class="comment">% n is even: considers negative / positive roots as required</span>
+
+                <span class="keyword">if</span> nargin == 2
+
+                    r = join(nthroot(r,n,<span class="string">'p'</span>), nthroot(r,n,<span class="string">'n'</span>)) ;
+
+                <span class="keyword">else</span>
+
+                    lp = (r.lower &gt;= 0) ;
+                    ln = (r.lower &lt;  0) ;
+                    up = (r.upper &gt;= 0) ;
+                    un = (r.upper &lt;  0) ;
+
+                    p = varargin{1} ;
+
+                    <span class="keyword">if</span> isa(p, <span class="string">'char'</span>)
+
+                        <span class="keyword">if</span> p == <span class="string">'p'</span>
+
+                            r.lower(lp) = nthroot(r.lower(lp),n) ;
+                            r.upper(up) = nthroot(r.upper(up),n) ;
+
+                            r.lower(ln) = nan ;
+                            r.upper(un) = nan ;
+
+                        <span class="keyword">elseif</span> p == <span class="string">'n'</span>
+
+                            r.lower(lp) = -nthroot(r.lower(lp),n) ;
+                            r.upper(up) = -nthroot(r.upper(up),n) ;
+
+                            s.type = <span class="string">'()'</span> ;
+                            s.subs = {lp &amp; up} ;
+
+                            r = subsasgn(r,s,subsref(r,s).') ;
+
+                            r.lower(ln) = nan ;
+                            r.upper(un) = nan ;
+
+                        <span class="keyword">end</span>
+
+                    <span class="keyword">else</span>
+
+                        pos = p &gt;= 0 ;
+                        neg = p &lt;= 0 ;
+                        und = ~(pos|neg) ;
+
+                        s.type = <span class="string">'()'</span> ;
+                        s.subs = {pos} ;
+
+                        r = subsasgn(r,s,nthroot(subsref(r,s), n, <span class="string">'p'</span>)) ;
+
+                        s.subs = {neg} ;
+
+                        r = subsasgn(r,s,nthroot(subsref(r,s), n, <span class="string">'n'</span>)) ;
+
+                        s.subs = {und} ;
+
+                        r = subsasgn(r,s,nthroot(subsref(r,s), n)) ;
+
+                    <span class="keyword">end</span>
+
+                <span class="keyword">end</span>
+
+            <span class="keyword">elseif</span> n ~= 1                      <span class="comment">% Case n = 1: r |-&gt; r, no computation is required</span>
+                                               <span class="comment">% For n odd, x |-&gt; x^(1/n) increases on R</span>
+                r.lower = nthroot(r.lower, n) ;
+                r.upper = nthroot(r.upper, n) ;
+
+            <span class="keyword">end</span>
+
+        <span class="keyword">end</span> <span class="comment">% nthroot</span>
+</pre><p><b>exp ( a )</b></p><p>Element-wise exponential operation.</p><pre class="codeinput">        <span class="keyword">function</span> a = exp(a)
+            a.lower = exp(a.lower) ;
+            a.upper = exp(a.upper) ;
+        <span class="keyword">end</span> <span class="comment">% exp</span>
+</pre><p><b>ln ( a )</b></p><p>Element-wise natural logarithm operation (alternative notation to <i>log</i>).</p><pre class="codeinput">        <span class="keyword">function</span> a = ln(a)
+            a = log(a) ;
+        <span class="keyword">end</span> <span class="comment">% ln</span>
+</pre><p><b>log ( a )</b></p><p>Element-wise natural logarithm operation.</p><pre class="codeinput">        <span class="keyword">function</span> a = log(a)
+
+            undef = ~(a.lower &gt; 0) | ~(a.upper &gt; 0) ;
+
+            a.lower(~undef) = log(a.lower(~undef)) ;
+            a.upper(~undef) = log(a.upper(~undef)) ;
+
+            a.lower(undef) = nan ;
+            a.upper(undef) = nan ;
+
+        <span class="keyword">end</span> <span class="comment">% log</span>
+</pre><p><b>mod ( a, d )</b></p><p>Overloads Matlab <i>mod</i> function for <i>interval</i> arrays.</p><pre class="codeinput">        <span class="keyword">function</span> r = mod(a,d)
+            r = mod(a.lower, d) ;
+            r = interval(r, a.upper - a.lower + r) ;
+        <span class="keyword">end</span> <span class="comment">% mod</span>
+</pre><p><b>sin ( a )</b></p><p>Element-wise sine operation.</p><pre class="codeinput">        <span class="keyword">function</span> r = sin(a)
+
+            undef = isnan(a) ;
+
+            modal = a.lower &gt; a.upper ;
+
+            s.type = <span class="string">'()'</span> ;
+            s.subs = {modal} ;
+
+            a = subsasgn(a,s, subsref(a,s).') ;
+
+            s.subs = {~undef} ;
+
+            a = subsasgn(a, s, mod(subsref(a, s), 2*pi)) ;
+
+            r = interval(-ones(size(a)), ones(size(a))) ;
+
+            s2pi = width(a) &lt; 2*pi ;
+
+            s.subs = {s2pi} ;
+
+            a2pi = subsref(a,s) ;
+
+            a2pil = sin(a2pi.lower) ;
+            a2piu = sin(a2pi.upper) ;
+
+            u = min(a2pil, a2piu) ;
+            v = max(a2pil, a2piu) ;
+
+            r.lower(s2pi &amp; isout(1.5*pi,a) &amp; isout(3.5*pi,a)) = u(isout(1.5*pi,a2pi) &amp; isout(3.5*pi,a2pi)) ;
+            r.upper(s2pi &amp; isout(0.5*pi,a) &amp; isout(2.5*pi,a)) = v(isout(0.5*pi,a2pi) &amp; isout(2.5*pi,a2pi)) ;
+
+            s.subs = {modal} ;
+
+            r = subsasgn(r,s, subsref(r,s).') ;
+
+            r.lower(undef) = nan ;
+            r.upper(undef) = nan ;
+
+        <span class="keyword">end</span> <span class="comment">% sin</span>
+</pre><p><b>cos ( a )</b></p><p>Element-wise cosine operation.</p><pre class="codeinput">        <span class="keyword">function</span> a = cos(a)
+            a = sin(a + .5*pi) ;
+        <span class="keyword">end</span> <span class="comment">% cos</span>
+</pre><p><b>asin ( a, varargin )</b></p><p>Element-wise arcsine operation.</p><p>A domain containing the result may be specified in <i>varargin</i>.</p><pre class="codeinput">        <span class="keyword">function</span> a = asin(a, varargin)
+
+            mia = a.lower &gt; a.upper ;
+
+            [a.lower(mia) a.upper(mia)] = deal(a.upper(mia), a.lower(mia)) ;
+
+            undef = ~(a.lower &gt;= -1) | ~(a.upper &lt;= 1) ;
+
+            ii = (a.lower &gt; -1) &amp; (a.upper &lt; 1) ;
+            ei = (a.lower == -1) &amp; (a.upper &lt; 1) ;
+            ie = (a.lower &gt; -1) &amp; (a.upper == 1) ;
+            ee = (a.lower == -1) &amp; (a.upper == 1) ;
+
+            <span class="keyword">if</span> nargin == 1
+
+                a.lower(ii) = asin(a.lower(ii)) ;
+                a.upper(ii) = asin(a.upper(ii)) ;
+
+                [a.lower(ei), a.upper(ei)] = deal(-pi-asin(a.upper(ei)), asin(a.upper(ei))) ;
+
+                [a.lower(ie), a.upper(ie)] = deal(asin(a.lower(ie)), pi-asin(a.lower(ie))) ;
+
+                a.lower(ee) = -inf ;
+                a.upper(ee) = inf ;
+
+            <span class="keyword">else</span>
+
+                d = varargin{1} ;
+
+                asin1 = asin(a) ;
+
+                k = ceil((d.lower - asin1.upper)*.5/pi) - 1 ;
+
+                l = asin1.lower + 2*k*pi ;
+
+                k = floor((d.upper - asin1.lower)*.5/pi) + 1 ;
+
+                u = asin1.upper + 2*k*pi ;
+
+
+                asin2 = pi - interval(asin1.lower(ii), asin1.upper(ii)) ;
+
+                dii = interval(d.lower(ii), d.upper(ii)) ;
+
+                k = ceil((dii.lower + asin2.upper-pi)*.5/pi) - 1 ;
+
+                l(ii) = min(l(ii), asin2.lower + 2*k*pi) ;
+
+                k = floor((dii.upper + asin2.lower-pi)*.5/pi) + 1 ;
+
+                u(ii) = max(u(ii), asin2.upper + 2*k*pi) ;
+
+
+                a = d &amp; interval(l,u) ;
+
+            <span class="keyword">end</span>
+
+            [a.lower(mia) a.upper(mia)] = deal(a.upper(mia), a.lower(mia)) ;
+
+            a.lower(undef) = nan ;
+            a.upper(undef) = nan ;
+
+        <span class="keyword">end</span> <span class="comment">% arcsin</span>
+</pre><p><b>asin ( a, varargin )</b></p><p>Element-wise arccosine operation.</p><p>A domain containing the result may be specified in <i>varargin</i>.</p><pre class="codeinput">        <span class="keyword">function</span> a = acos(a, varargin)
+
+            <span class="keyword">if</span> nargin == 1
+
+                a = .5*pi - asin(a) ;
+
+            <span class="keyword">else</span>
+
+                d = interval.toInterval(varargin{1}) ;
+
+                a = .5*pi - asin(a, .5*pi - d) ;
+
+            <span class="keyword">end</span>
+
+        <span class="keyword">end</span> <span class="comment">% acos</span>
+</pre><pre class="codeinput">        <span class="comment">% *abs ( r )*</span>
+        <span class="comment">%</span>
+        <span class="comment">% Element-wise absolute value operation.</span>
+
+        <span class="keyword">function</span> r = abs(r)
+
+            np = (r.lower &lt;= 0) &amp; (r.upper &gt;= 0) ;
+            pn = (r.lower &gt;= 0) &amp; (r.upper &lt;= 0) ;
+            nn = (r.lower &lt;= 0) &amp; (r.upper &lt;= 0) ;
+
+            r.upper(np) = max(-r.lower(np), r.upper(np)) ;
+            r.lower(np) = 0 ;
+
+            r.lower(pn) = max(r.lower(pn), -r.upper(pn)) ;
+            r.upper(pn) = 0 ;
+
+            s.type = <span class="string">'()'</span> ;
+            s.subs = {nn} ;
+
+            r = subsasgn(r, s, -subsref(r,s)) ;
+
+        <span class="keyword">end</span> <span class="comment">% abs</span>
+</pre><h2>Binary relations<a name="49"></a></h2><p><b>lt ( a, b )</b></p><p>Overloads Matlab operator " &lt; " :</p><pre>(a &lt; b) = lt(a,b)</pre><p>Element-wise <i>less than</i> logical test. For two single intervals <i>[a]</i> and <i>[b]</i> :</p><p><img src="interval_eq28451.png" alt="$$([a] < [b]) \Leftrightarrow (\, \forall (x,y) \in [a] \times [b] \, , \; x < y)$$"></p><pre class="codeinput">        <span class="keyword">function</span> r = lt(a,b)
+            r = bsxfun(@lt, interval.toInterval(a).upper, interval.toInterval(b).lower) ;
+        <span class="keyword">end</span> <span class="comment">% lt</span>
+</pre><p><b>gt ( a, b )</b></p><p>Overloads Matlab operator " &gt; " :</p><pre>(a &gt; b) = gt(a,b)</pre><p>Element-wise <i>greater than</i> logical test. For two single intervals <i>[a]</i> and <i>[b]</i> :</p><p><img src="interval_eq54774.png" alt="$$([a] &gt; [b]) \Leftrightarrow (\, \forall (x,y) \in [a] \times [b] \, , \; x &gt; y)$$"></p><pre class="codeinput">        <span class="keyword">function</span> r = gt(a,b)
+            r = bsxfun(@gt, interval.toInterval(a).lower, interval.toInterval(b).upper) ;
+        <span class="keyword">end</span> <span class="comment">% gt</span>
+</pre><p><b>le ( a, b )</b></p><p>Overloads Matlab operator " &lt;= " :</p><pre>(a &lt;= b) = le(a,b)</pre><p>Element-wise <i>less than or equal to</i> logical test. For two single intervals <i>[a]</i> and <i>[b]</i> :</p><p><img src="interval_eq40770.png" alt="$$([a] \leq [b]) \Leftrightarrow (\, \forall (x,y) \in [a] \times [b] \, , \; x \leq y)$$"></p><pre class="codeinput">        <span class="keyword">function</span> r = le(a,b)
+            r = bsxfun(@le, interval.toInterval(a).upper, interval.toInterval(b).lower) ;
+        <span class="keyword">end</span> <span class="comment">% le</span>
+</pre><p><b>ge ( a, b )</b></p><p>Overloads Matlab operator " &gt;= " :</p><pre>(a &gt;= b) = ge(a,b)</pre><p>Element-wise <i>greater than or equal to</i> logical test. For two single intervals <i>[a]</i> and <i>[b]</i> :</p><p><img src="interval_eq56313.png" alt="$$([a] \geq [b]) \Leftrightarrow (\, \forall (x,y) \in [a] \times [b] \, , \; x \geq y)$$"></p><pre class="codeinput">        <span class="keyword">function</span> r = ge(a,b)
+            r = bsxfun(@ge, interval.toInterval(a).lower, interval.toInterval(b).upper) ;
+        <span class="keyword">end</span> <span class="comment">% ge</span>
+</pre><p><b>eq ( a, b )</b></p><p>Overloads Matlab operator " == " :</p><pre>(a == b) = eq(a,b)</pre><p>Element-wise <i>equal to</i> logical test. For two single intervals <i>[a]</i> and <i>[b]</i> :</p><p><img src="interval_eq38038.png" alt="$$([a] = [b]) \Leftrightarrow (\, ( \, [a] \subset [b] \, ) \wedge ( \, [b] \subset [a] \, ) \,)$$"></p><pre class="codeinput">        <span class="keyword">function</span> r = eq(a,b)
+
+            a = interval.toInterval(a) ;
+            b = interval.toInterval(b) ;
+
+            r = bsxfun(@eq, a.lower, b.lower) &amp; bsxfun(@eq, a.upper, b.upper) ;
+
+        <span class="keyword">end</span> <span class="comment">% eq</span>
+</pre><p><b>ne ( a, b )</b></p><p>Overloads Matlab operator " ~= " :</p><pre>(a ~= b) = ne(a,b)</pre><p>Element-wise <i>not equal to</i> logical test. For two single intervals <i>[a]</i> and <i>[b]</i> :</p><p><img src="interval_eq30593.png" alt="$$([a] \not= [b]) \Leftrightarrow (\, ( \, [a] \not\subset [b] \, ) \vee ( \, [b] \not\subset [a] \, ) \,)$$"></p><pre class="codeinput">        <span class="keyword">function</span> r = ne(a,b)
+
+            a = interval.toInterval(a) ;
+            b = interval.toInterval(b) ;
+
+            r = bsxfun(@ne, a.lower, b.lower) | bsxfun(@ne, a.upper, b.upper) ;
+
+        <span class="keyword">end</span> <span class="comment">% ne</span>
+</pre><p><b>and ( a, b )</b></p><p>Overloads Matlab operator " &amp; " :</p><pre>a &amp; b = and(a,b)</pre><p>This element-wise operation computes the intersection of <i>a</i> and <i>b</i>. For two single intervals <i>[a]</i> and <i>[b]</i> :</p><p><img src="interval_eq04940.png" alt="$$( \, [a] \; \&amp; \; [b] \, ) = ( \, [a] \, \cap \, [b] \, )$$"></p><pre class="codeinput">        <span class="keyword">function</span> r = and(a,b)       <span class="comment">% r = intersection(a,b)</span>
+            a = interval.toInterval(a) ;
+            b = interval.toInterval(b) ;
+            r = interval(bsxfun(@max,a.lower,b.lower), bsxfun(@min,a.upper,b.upper)) ;
+        <span class="keyword">end</span> <span class="comment">% and</span>
+</pre><p><b>or ( a, b )</b></p><p>Overloads Matlab operator " | " :</p><pre>a | b = or(a,b)</pre><p>This element-wise operation computes the union of <i>a</i> and <i>b</i>. For two single intervals <i>[a]</i> and <i>[b]</i> :</p><p><img src="interval_eq39612.png" alt="$$( \, [a] \; | \; [b] \, ) = ( \, [a] \, \cup \, [b] \, )$$"></p><pre class="codeinput">        <span class="keyword">function</span> r = or(a,b)        <span class="comment">% r = union(a,b)</span>
+            a = interval.toInterval(a) ;
+            b = interval.toInterval(b) ;
+            r = interval(bsxfun(@min,a.lower,b.lower), bsxfun(@max,a.upper,b.upper)) ;
+        <span class="keyword">end</span> <span class="comment">% or</span>
+</pre><p><b>isin ( a, b)</b></p><p>Element-wise inclusion test between the intervals contained in <i>a</i> and those contained in <i>b</i> .</p><p><img src="interval_eq23556.png" alt="$$ isin(a,b) = ( \, a \, \subset \, b \, )$$"></p><pre class="codeinput">        <span class="keyword">function</span> r = isin(a,b)
+            a = interval.toInterval(a) ;
+            b = interval.toInterval(b) ;
+            r = bsxfun(@ge, a.lower, b.lower) &amp; bsxfun(@le, a.upper, b.upper) ;
+        <span class="keyword">end</span> <span class="comment">% isin</span>
+</pre><p><b>isout ( a, b)</b></p><p>Element-wise exclusion test between the intervals contained in <i>a</i> and those contained in <i>b</i> .</p><p><img src="interval_eq32130.png" alt="$$ isout(a,b) = ( \, a \, \cap \, b \, = \, \emptyset \,)$$"></p><pre class="codeinput">        <span class="keyword">function</span> r = isout(a,b)
+            a = interval.toInterval(a) ;
+            b = interval.toInterval(b) ;
+            r = bsxfun(@lt, a.upper, b.lower) | bsxfun(@gt, a.lower, b.upper) ;
+        <span class="keyword">end</span> <span class="comment">% isout</span>
+</pre><h2>Other operations<a name="60"></a></h2><p><b>dual ( a )</b></p><p>Inverse the modality of <i>a</i> : if <i>a = [ a.lower, a.upper ]</i>, then <i>dual(a) = [ a.upper, a.lower ]</i>.</p><pre class="codeinput">        <span class="keyword">function</span> b = dual(a)         <span class="comment">% b = dual(a)   (switches the modality)</span>
+                b = a ;
+                b.lower = a.upper ;
+                b.upper = a.lower ;
+        <span class="keyword">end</span>
+</pre><p><b>transpose ( a )</b></p><p>Overloads Matlab operator " .' " :</p><pre>a.' = transpose(a)</pre><p>This element-wise operation switches the modality of <i>a</i> (see <i>dual</i> ).</p><pre class="codeinput">        <span class="keyword">function</span> b = transpose(a)    <span class="comment">% r = dual(a)   (switches the modality)</span>
+                b = a ;
+                b.lower = a.upper ;
+                b.upper = a.lower ;
+        <span class="keyword">end</span> <span class="comment">% transpose</span>
+</pre><p><b>ctranspose ( a )</b></p><p>Overloads Matlab operator " ' " :</p><pre>a' = ctranspose(a)</pre><p>Calls <i>ctranspose</i> on internal arrays <i>lower</i> and <i>upper</i> . Switches their first and second dimensions.</p><pre class="codeinput">        <span class="keyword">function</span> a = ctranspose(a)  <span class="comment">% r = r'        (transposes the internal arrays)</span>
+            a.lower = a.lower' ;
+            a.upper = a.upper' ;
+        <span class="keyword">end</span> <span class="comment">% ctranspose</span>
+</pre><p><b>width ( a )</b></p><p>Returns the width of each interval contained in <i>a</i> , <i>i.e.</i> their upper bounds minus their lower bounds. For any interval <i>a</i>, <i>width(a) = a.upper - a.lower</i>.</p><pre class="codeinput">        <span class="keyword">function</span> a = width(a)
+            a = a.upper - a.lower ;
+        <span class="keyword">end</span> <span class="comment">% width</span>
+</pre><p><b>widthMax ( a )</b></p><p>Returns the width of the <i>largest</i> interval contained in <i>a</i> (<i>largest</i> : in the way defined by <i>width</i>).</p><pre class="codeinput">        <span class="keyword">function</span> r = widthMax(a)
+            r = max(a.upper(:) - a.lower(:)) ;
+        <span class="keyword">end</span> <span class="comment">% widthMax</span>
+</pre><p><b>mid ( a )</b></p><p>Returns the median points of the intervals contained in <i>a</i> .</p><pre class="codeinput">        <span class="keyword">function</span> r = mid(a)
+            r = .5*(a.lower + a.upper) ;
+        <span class="keyword">end</span> <span class="comment">% mid</span>
+</pre><p><b>bisect ( a )</b></p><p>Bisects the boxes contained in <i>a</i>, with respect to their largest component (<i>i.e.</i> the largest interval of each one of them), and returns the resulting boxes.</p><p>For a given box, the width of its components is considered relatively to a given vector, <i>w0</i>. A value <img src="interval_eq18470.png" alt="$+\infty$"> in <i>w0</i> indicates that no bisection shall be performed along the corresponding component(s) in <i>a</i>.</p><p>The input <i>a</i> and the output <i>r</i> are arrays of <i>interval</i> objects that are interpreted using the parameters <i>bisectdim</i> and <i>catdim</i>:</p><div><ul><li><i>bisectdim</i> : indicates the dimension along which intervals are placed in the array to form a box (<i>e.g.</i> 2 if boxes are given as row vectors)</li></ul></div><div><ul><li><i>catdim</i> : indicates the dimension of the box list structure in the array (<i>e.g.</i> 1 if a row of the array contains a box)</li></ul></div><p><b>Example:</b> Let us consider <i>A</i>, defined as:</p><p><img src="interval_eq64597.png" alt="$$ A = \left[ \begin{tabular}{cc}&#xA;          {[ 0,1 ]} &amp; {[ 0,4 ]} \\&#xA;          {[ 1,2 ]} &amp; {[ 0,4 ]} \\&#xA;       \end{tabular} \right] $$"></p><p>Assuming <i>bisectdim = 2</i> and <i>catdim = 1</i>, <i>A</i> contains two boxes, [0,1] x [0,4] on one hand, and [1,2] x [0,4] on the other hand. Assuming also <i>w0 = 1</i>, <i>bisect</i> returns the following <i>interval</i> array <i>R</i> :</p><p><img src="interval_eq88769.png" alt="$$ R = \left[ \begin{tabular}{cc}&#xA;          {[ 0,1 ]} &amp; {[ 0,2 ]} \\&#xA;          {[ 1,2 ]} &amp; {[ 0,2 ]} \\&#xA;          {[ 0,1 ]} &amp; {[ 2,4 ]} \\&#xA;          {[ 1,2 ]} &amp; {[ 2,4 ]} \\&#xA;       \end{tabular} \right] $$"></p><pre class="codeinput">        <span class="keyword">function</span> r = bisect(a, w0, bisectdim, catdim)
+
+            <span class="keyword">if</span> isempty(a)                   <span class="comment">% Checks whether a is empty</span>
+
+                r = a ;
+
+            <span class="keyword">else</span>                            <span class="comment">% If not...</span>
+
+                <span class="comment">% Computes imax, a vector along catdim indicating, for each box, the index</span>
+                <span class="comment">% of the component to be bisected (i.e. the largest one with respect to w0):</span>
+                <span class="comment">%  - boxdim : number of components per box (i.e. the number of dimensions of a box)</span>
+                <span class="comment">%  -  i = [ 1  bisectdim  3  4  ...  bisectdim-1  2  bisectdim+1  ...  n ]</span>
+                <span class="comment">%                 ^                               ^</span>
+                <span class="comment">%                 2                            bisectdim</span>
+                <span class="comment">%  - w0(:)' : makes w0 a row vector</span>
+                <span class="comment">%  - permute(w0(:)',i) : permutes the 2nd and the bisectdimth dimensions of w0(:)',</span>
+                <span class="comment">%    i.e. makes w0 a vector along bisectdim</span>
+                <span class="comment">%  - max(u, [], bisectdim) : returns the maximal values of u along its bisectdimth dimension</span>
+                <span class="comment">%   (first output), and their position in u (second output)</span>
+
+                boxdim = size(a,bisectdim) ;
+
+                i = 1:boxdim ;
+
+                i(2) = bisectdim ;
+                i(bisectdim) = 2 ;
+
+                [~, imax] = max(bsxfun(@rdivide, width(a), permute(w0(:)',i)), [], bisectdim) ;
+
+                <span class="comment">% Computes index, a boolean vector indicating the positions of the intervals to be bisected in a:</span>
+                <span class="comment">%  - permute(1:boxdim, i) : creates a vector [ 1  2  ...  boxdim ] along the bisectdimth dimension</span>
+                <span class="comment">%  - bsxfun(@eq, imax, permute(1:boxdim, i)) : tells where are located the intervals identified</span>
+                <span class="comment">%    by imax in a, returns a logical index</span>
+
+                index = bsxfun(@eq, imax, permute(1:boxdim, i)) ;
+
+                <span class="comment">% Computes the resulting vector of boxes...</span>
+
+                r = a ;                                         <span class="comment">% Copies a</span>
+
+                mid = .5 * (r.upper(index) + r.lower(index)) ;  <span class="comment">% Computes the center of the intervals to be bisected</span>
+
+                r.upper(index) = mid ;                          <span class="comment">% Lower half of a</span>
+
+                a.lower(index) = mid ;                          <span class="comment">% Upper half of a ; reuses parameter a to store the result</span>
+
+                r = cat(catdim, r, a) ;                         <span class="comment">% Concatenates the boxes along the specified dimension</span>
+
+            <span class="keyword">end</span>
+
+        <span class="keyword">end</span> <span class="comment">% bisect</span>
+</pre><p><b>join ( a, b [, dim] )</b></p><p><i>join</i> may be called in the following ways:</p><div><ul><li><b>join(a, b)</b></li></ul></div><p>Performs element-wise union between <i>interval</i> arrays <i>a</i> and <i>b</i> (<i>a</i> and <i>b</i> shall have the same size).</p><p>In the case <i>b</i> is an array of singletons or a single singleton, <i>b</i> may be possibly an array of doubles.</p><div><ul><li><b>join(a, [ ], dim)</b></li></ul></div><p>Joins the intervals contained in an <i>interval</i> array <i>a</i> along its <img src="interval_eq50257.png" alt="$dim^{th}$"> dimension.</p><pre class="codeinput">        <span class="keyword">function</span> r = join(a, b, varargin)
+
+            <span class="keyword">if</span> nargin == 2
+
+                <span class="keyword">if</span> isa(b, <span class="string">'interval'</span>)
+
+                    r = a ;
+
+                    r.lower = min(a.lower, b.lower) ;
+                    r.upper = max(a.upper, b.upper) ;
+
+                    r.lower(isnan(a.lower) | isnan(b.lower)) = nan ;
+                    r.upper(isnan(a.upper) | isnan(b.upper)) = nan ;
+
+                <span class="keyword">else</span>
+
+                    r = a ;
+
+                    r.lower = min(a.lower, [], b) ;
+                    r.upper = max(a.upper, [], b) ;
+
+                <span class="keyword">end</span>
+
+            <span class="keyword">else</span>
+
+                r = a ;
+
+                r.lower = min(a.lower, [], varargin{1}) ;
+                r.upper = max(a.upper, [], varargin{1}) ;
+
+            <span class="keyword">end</span>
+
+        <span class="keyword">end</span> <span class="comment">% join</span>
+</pre><p><b>inter ( a, b [, dim] )</b></p><p><i>inter</i> may be called in the following ways:</p><div><ul><li><b>inter(a, b)</b></li></ul></div><p>Performs element-wise intersection between <i>interval</i> arrays <i>a</i> and <i>b</i> (<i>a</i> and <i>b</i> shall have the same size).</p><p>In the case <i>b</i> is an array of singletons or a single singleton, <i>b</i> may be possibly an array of doubles.</p><div><ul><li><b>inter(a, [ ], dim)</b></li></ul></div><p>Intersects the intervals contained in an <i>interval</i> array <i>a</i> along its <img src="interval_eq50257.png" alt="$dim^{th}$"> dimension.</p><p><b>Example</b> : Let us consider:</p><p><img src="interval_eq41525.png" alt="$$ A = \left[ \begin{tabular}{cc}&#xA;                  {[ 0,4 ]} &amp; {[ 1,2 ]} \\&#xA;                  {[ 0,1 ]} &amp; {[ 3,4 ]} \\&#xA;              \end{tabular} \right] $$"></p><p>Then:</p><p><img src="interval_eq00614.png" alt="$$ inter(A, [~], 2) = \left[ \begin{tabular}{cc}&#xA;                      {[ 1,2 ]} \\&#xA;                      {[ 3,1 ]} \\&#xA;                     \end{tabular} \right] $$"></p><p><img src="interval_eq84313.png" alt="$$ inter(A, [~], 1) = \left[ \begin{tabular}{cc}&#xA;                      {[ 0,1 ]} &amp; {[ 3,2 ]} \\&#xA;                     \end{tabular} \right] $$"></p><pre class="codeinput">        <span class="keyword">function</span> r = inter(a, b, varargin)
+
+            <span class="keyword">if</span> nargin == 2
+
+                <span class="keyword">if</span> isa(b, <span class="string">'interval'</span>)
+
+                    r = a ;
+
+                    r.lower = max(a.lower, b.lower) ;
+                    r.upper = min(a.upper, b.upper) ;
+
+                    r.lower(isnan(a.lower) | isnan(b.lower)) = nan ;
+                    r.upper(isnan(a.upper) | isnan(b.upper)) = nan ;
+
+                <span class="keyword">else</span>
+
+                    r = a ;
+
+                    r.lower = max(a.lower, [], b) ;
+                    r.upper = min(a.upper, [], b) ;
+
+                <span class="keyword">end</span>
+
+            <span class="keyword">else</span>
+
+                r = a ;
+
+                r.lower = max(a.lower, [], varargin{1}) ;
+                r.upper = min(a.upper, [], varargin{1}) ;
+
+            <span class="keyword">end</span>
+
+        <span class="keyword">end</span> <span class="comment">% inter</span>
+</pre><p><b>volume ( a, dim )</b></p><p>Computes the volume of each box of a <i>box</i> array.</p><p>The input <i>a</i> is an <i>interval</i> array. Boxes are inferred from <i>a</i> by considering vectors of intervals aligned along its <img src="interval_eq50257.png" alt="$dim^{th}$"> dimension.</p><pre class="codeinput">        <span class="keyword">function</span> a = volume(a, dim)
+            a = prod(a.upper-a.lower, dim) ;
+        <span class="keyword">end</span> <span class="comment">% volume</span>
+</pre><p><b>sum ( a, varargin )</b></p><p>Overloads Matlab <i>sum</i> function for <i>interval</i> arrays.</p><pre class="codeinput">        <span class="keyword">function</span> a = sum(a, varargin)
+            <span class="keyword">if</span> nargin == 1
+                a = interval(sum(a.lower), sum(a.upper)) ;
+            <span class="keyword">else</span>
+                dim = varargin{1} ;
+                a = interval(sum(a.lower, dim), sum(a.upper, dim)) ;
+            <span class="keyword">end</span>
+        <span class="keyword">end</span> <span class="comment">% sum</span>
+</pre><p><b>mean ( a, varargin )</b></p><p>Overloads Matlab <i>mean</i> function for <i>interval</i> arrays.</p><pre class="codeinput">        <span class="keyword">function</span> a = mean(a, varargin)
+            <span class="keyword">if</span> nargin == 1
+                a = interval(mean(a.lower), mean(a.upper)) ;
+            <span class="keyword">else</span>
+                dim = varargin{1} ;
+                a = interval(mean(a.lower, dim), mean(a.upper, dim)) ;
+            <span class="keyword">end</span>
+        <span class="keyword">end</span> <span class="comment">% mean</span>
+</pre><p><b>isreal ( a )</b></p><p>Tells whether the bounds of the intervals contained in <i>a</i> are both real, for each one of them.</p><pre class="codeinput">        <span class="keyword">function</span> a = isreal(a)
+            a = isreal(a.lower) &amp; isreal(a.upper) ;
+        <span class="keyword">end</span> <span class="comment">% isreal</span>
+</pre><p><b>isnan ( a )</b></p><p>Tells whether at least one bound of the intervals contained in <i>a</i> is <i>not a number</i>, for each one of them.</p><pre class="codeinput">        <span class="keyword">function</span> a = isnan(a)
+            a = isnan(a.lower) | isnan(a.upper) ;
+        <span class="keyword">end</span> <span class="comment">% isnan</span>
+</pre><pre class="codeinput">    <span class="keyword">end</span> <span class="comment">% methods</span>
+</pre><pre class="codeinput"><span class="keyword">end</span> <span class="comment">% classdef</span>
+</pre><p class="footer"><br>
+      Published with MATLAB&reg; 7.11<br></p></div><!--
+##### SOURCE BEGIN #####
+%% Using vectorial interval arithmetics within Matlab(R)
+% The class _interval_, presented hereafter, is meant to compute intervals
+% in an efficient and user-friendly way. Efficiency is achieved by making
+% it possible to handle arrays of intervals, and thus perform computations
+% in a fully vectorial way, without using any explicit _for_ loop at any
+% time. User-friendliness relies upon a class structure, that allows
+% overloading Matlab operators, in order to redefine a specific arithmetic
+% for intervals, as well as array routines to work with arrays of
+% intervals in the same way as for arrays of scalars.
+
+%% Class definition and structure
+% The class _interval_ works internally with two arrays of doubles, of the
+% same size, representing the _lower_ and _upper_ bounds of the intervals. The
+% $i^{th}$ interval contained in an _interval_ object is thus made of the lower
+% and upper bounds located in the $i^{th}$ position of property arrays
+% _lower_ and _upper_.
+%
+% Note: _lower_ and _upper_ are not supposed to be manipulated directly from
+%       outside the class; in the case they are, be careful to keep their
+%       sizes consistent with each other (_i.e._ identical)
+
+classdef interval
+    
+    properties (Access = private)
+        
+        lower = [] ;    % Internal array (of doubles) used to store the lower bounds
+        upper = [] ;    % Internal array (of doubles) used to store the upper bounds
+        
+    end
+    
+    %% Building _interval_ objects
+    % Basically, _interval_ objects may be created through two different
+    % ways: by specifying direclty their lower and upper bounds (two
+    % arrays of doubles), or by extracting them from a single array of
+    % doubles. Both processes are implemented by the following couple of
+    % methods, which are supposed to be used only internally (they do not
+    % perform any argument checking).
+        
+    methods (Hidden, Access = private)
+        
+        %%
+        % *copy ( int, lower, upper )*
+        %
+        % Sets interval _int_ properties _lower_ and _upper_ as specified,
+        % returns the newly defined interval.
+        
+        function int = copy(int, lower, upper)
+            int.lower = lower ;
+            int.upper = upper ;
+        end % copy
+        
+        %%
+        % *extract ( int, array, dim )*
+        %
+        % Extracts the lower and upper bounds defined in a single _array_ of
+        % doubles, sets interval _int_ properties consequently and returns it.
+        %
+        % The extraction is performed by splitting _array_ in two along its
+        % $dim^{th}$ dimension. The depth of _array_ along its $dim^{th}$
+        % dimension shall be therefore equal to 2: the first level gives
+        % _lower_, and second one _upper_. The singleton dimension _dim_ is
+        % removed from _lower_ and _upper_.
+        %
+        % * *Example 1:* Let us consider the following array:
+        % 
+        % $$ A = \left[ \begin{tabular}{cc} 1 & 2 \\ 3 & 4 \end{tabular} \right] $$
+        %
+        % Calling _extract ( int, A, 2 )_ (with _int_ any _interval_ object) will
+        % split _A_ along its second dimension:
+        %
+        % $$ A = \left[ \begin{tabular}{c|c} 1 & 2 \\ 3 & 4 \end{tabular} \right] $$
+        %
+        % In this way, the first and second columns of _A_ give _lower_ and _upper_ :
+        % 
+        % $$ \left\lbrace \begin{tabular}{ccc} \vspace{2mm}
+        %      $lower$ & = & \bigg[ {\begin{tabular}{c} 1\\ 3 \end{tabular}} \bigg] \\
+        %      $upper$ & = & \bigg[ {\begin{tabular}{c} 2\\ 4 \end{tabular}} \bigg] \\
+        %    \end{tabular} \right.$$
+        %
+        % Hence, the newly defined interval object will be a 2-by-1 array
+        % of intervals, the first interval being [1 2], and the second
+        % one being [3 4].
+        %
+        % * *Example 2:* Keeping _A_ from the previous example, let us
+        % consider now _extract ( int, A, 1 )_ . _A_ is split along its first dimension:
+        %
+        % $$ A = \left[ \begin{tabular}{cc} 1 & 2 \\ \hline 3 & 4 \end{tabular} \right] $$
+        %
+        % As in the previous example, _lower_ and _upper_ are inferred from
+        % the row vectors constituting _A_, which are 1-by-2 arrays of
+        % doubles. Logically, the first dimension of these subarrays is a
+        % singleton dimension, which is removed by _extract_ . In this way,
+        % _lower_ and _upper_ are not 1-by-2 arrays, but 2-by-1 arrays:
+        %
+        % $$ \left\lbrace \begin{tabular}{ccc} \vspace{2mm}
+        %      $lower$ & = & \bigg[ {\begin{tabular}{c} 1\\ 2 \end{tabular}} \bigg] \\
+        %      $upper$ & = & \bigg[ {\begin{tabular}{c} 3\\ 4 \end{tabular}} \bigg] \\
+        %    \end{tabular} \right.$$
+        %
+        % The resulting array of intervals is therefore a 2-by-1 array as
+        % well.
+        %
+        % Note: Had been _A_ an _n_-by-2-by- _m_ array, extracting _A_ along
+        % its second dimension would have yield an _n_-by- _m_ array of
+        % intervals.
+        %
+        % Note: Example 1 is a particular example in which the extraction
+        % is performed along the last non singleton dimension of _A_ . As a
+        % result, removing this last dimension, that has become singleton
+        % after the extraction, does not change in fact the dimension of
+        % both extracted subarrays.
+        
+        function int = extract(int, array, dim)
+            
+            n = ndims(array) ;                   % n: number of dimensions of array
+            
+            S.type = '()' ;                      % S: subscript used to split A
+            
+            S.subs = repmat({':'}, 1, n) ;
+            
+            S.subs{dim} = 1 ;
+            
+            int.lower = subsref(array,S) ;       % lower = array(:,...,:,1,:,...,:)
+                                                 %               |       |       |
+            S.subs{dim} = 2 ;                    %               1      dim      n
+            
+            int.upper = subsref(array,S) ;       % upper = array(:,...,:,2,:,...,:)
+                                                 %               |       |       |
+                                                 %               1      dim      n
+                                                  
+            u = [1:dim-1 dim+1:n dim] ;          % Dimension dim of lower and upper
+                                                 % is singleton -> removes it by
+            int.lower = permute(int.lower,u) ;   % placing it as the last dimension
+            int.upper = permute(int.upper,u) ;
+            
+        end % extract
+        
+    end % private methods
+
+    
+    %%
+    % REPLACE_WITH_DASH_DASH *Miscellaneous* REPLACE_WITH_DASH_DASH
+    % 
+    % _Interval_ methods that expect to be passed _interval_ objects may also accept
+    % arrays of doubles. In this case, these arrays are given to the
+    % default constructor, in order to build a proper _interval_ object. This
+    % is the purpose of the _toInterval_ function.
+    
+    methods (Hidden, Static)
+        
+        function int = toInterval(int)
+            
+            if isa(int,'numeric') || isa(int,'logical') % Does not do anything if int
+                int = interval(int) ;                   % is already an interval object
+            end
+            
+        end % interval.toInterval
+        
+    end % static methods
+    
+    
+    %% Instantiating interval objects
+    % Intervals may be defined by different means:
+    %%
+    % # From nothing, _i.e._ _interval ( )_ : _lower_ and _upper_ are initialized to
+    % empty arrays
+    % # From an other interval _int_ , _i.e._ _interval ( int )_ : _lower_ and _upper_
+    % are copied, equivalent to _interval ( int.lower, int.upper )_
+    % # From a couple of lower and upper bounds _L_ and _U_ , _i.e._
+    % _interval ( L, U )_ : if _L_ and _U_ have the same size, _lower = L_ and
+    % _upper = U_ (otherwise an error occurs)
+    % # From an array of doubles _A_ , _i.e._ _interval(A [ , [ ], dim ] )_ : the lower and
+    % upper bounds are extracted from _A_ (see _extract_ ), that
+    % is split along its $dim^{th}$ dimension; if _dim_ is not specified,
+    % or invalid (depth of _A_ along _dim_ different from 2) the algorithm acts
+    % as follows:
+    %
+    % * if _dim_ is invalid (for instance 0), initializes both _lower_ and
+    % _upper_ to _A_ - equivalent to _interval ( A, A )_
+    % * otherwise, if the depth of _A_ along its second dimension is equal to 2,
+    % considers _dim = 2_
+    % * otherwise, looks for a dimension along which the depth of _A_ is
+    % equal to 2; if any and only one, considers _dim_ to be this one
+    % * otherwise, initializes both _lower_ and _upper_ to _A_
+    
+    methods
+        
+        function obj = interval(varargin)
+            
+            nin = nargin ;
+            
+            if nin > 0
+                
+                arg1 = varargin{1} ;
+                
+                if (nin == 1) && isa(arg1, 'interval')
+                    
+                    obj.lower = arg1.lower ;     % 1 parameter, an interval object
+                    obj.upper = arg1.upper ;     % -> Copy constructor
+                    
+                elseif isa(arg1, 'numeric') || isa(arg1, 'logical')
+                    
+                    if nin == 1                         % 1 parameter, an array of numbers
+                                                        % Looks for dimensions along which
+                        s = size(arg1) == 2 ;           % this array has a depth of 2,
+                                                        % the second dimension being preferred
+                        if size(arg1,2) == 2            % If any, extract intervals from
+                                                        % this array
+                            obj = obj.extract(arg1,2) ;
+                            
+                        elseif sum(s) == 1
+                            
+                            [~, i] = max(s) ;
+                            
+                            obj = obj.extract(arg1,i) ;
+                            
+                        else                             % If not, constructs degenerate intervals
+                                                         % corresponding to this array
+                            obj = copy(obj, arg1, arg1) ;
+                            
+                        end
+                        
+                    elseif nin == 2                      % 2 parameters, both arrays of doubles
+                        
+                        arg2 = varargin{2} ;
+                        
+                        if isa(arg2, 'numeric') || isa(arg2, 'logical')  % Considers them as lower / upper
+                                                                         % bounds if they have the same size
+                            if (ndims(arg1) == ndims(arg2)) && all(size(arg1) == size(arg2))
+                                
+                                obj = copy(obj, arg1, arg2) ;
+                                
+                            else                         % Otherwise, raises an error
+                                
+                                error('Incorrect parameters') ;
+                                
+                            end
+                            
+                        else
+                            
+                            error('Incorrect parameters') ;
+                            
+                        end
+                        
+                    else
+                        
+                        arg3 = varargin{3} ;
+                        
+                        if (isa(arg3, 'numeric') || isa(arg3, 'logical')) && (numel(arg3) == 1)
+                                               % 3 parameters: an array of
+                                               % doubles, anything and a number
+                            if  arg3 > 0       % If the number is positive, extracts the
+                                               % array along the dimension it designates
+                                obj = obj.extract(arg1,arg3) ;
+                                
+                            else               % Otherwise, constructs degenerate
+                                               % intervals from the array
+                                obj = copy(obj, arg1, arg1) ;
+                                
+                            end
+                            
+                        else
+                            
+                            error('Incorrect parameters') ;
+                            
+                        end
+                        
+                    end
+                    
+                end
+                
+            end
+            
+        end % constructor
+        
+        
+        %% Displaying _interval_ objects
+        % 
+        % The class _interval_ overrides Matlab built-in functions _disp_
+        % and _display_ . These functions behave exactly in the same way.
+        %
+        % Intervals are displayed line by line, each line containing the
+        % lower and upper bounds of an interval contained in the object.
+        %
+        % * *Example 1:* Let us consider _A = interval ( [ 1 2 ; 3 4 ; 5 6] )_ .
+        %
+        % $$ A.lower = \left[ \begin{tabular}{c} 1 \\ 3 \\ 5 \end{tabular} \right] $$
+        % and $$ A.upper = \left[ \begin{tabular}{c} 2 \\ 4 \\ 6 \end{tabular} \right] $$
+        %
+        % _disp( A )_ gives:
+        %
+        % $$ \left[ \begin{tabular}{cc} 1 & 2 \\ 3 & 4 \\ 5 & 6 \end{tabular} \right] $$
+        %
+        % * *Example 2:* Let us consider _B = interval ( [ 1 11 ; 3 13 ; 5 15 ] , [ 2 12 ; 4 14 ; 6 16 ] )_ .
+        %
+        % $$ B.lower = \left[ \begin{tabular}{cc} 1 & 11 \\ 3 & 13 \\ 5 & 15 \end{tabular} \right] $$
+        % and $$ B.upper = \left[ \begin{tabular}{cc} 2 & 12 \\ 4 & 14 \\ 6 & 16 \end{tabular} \right] $$
+        %
+        % _disp( B )_ gives:
+        %
+        %  (:,:,1) =
+        %
+        % $$ \left[ \begin{tabular}{cc} 1 & 2 \\ 3 & 4 \\ 5 & 6 \end{tabular} \right] $$
+        %
+        %  (:,:,2) =
+        %
+        % $$ \left[ \begin{tabular}{cc} 11 & 12 \\ 13 & 14 \\ 15 & 16 \end{tabular} \right] $$
+        
+        function disp(obj)                  % cf. eponymous built-in function
+            s = [1 ndims(obj)+1 2:ndims(obj)] ;
+            disp([permute(obj.lower, s) permute(obj.upper, s)]) ;
+        end % disp
+        
+        
+        function display(obj)               % cf. eponymous built-in function
+            disp(obj) ;
+        end % display
+        
+
+        
+        
+        %% Manipulating _interval_ objects as arrays
+        %
+        %%
+        % *subsref ( int, s )*
+        %
+        % Overloads Matlab eponymous built-in function.
+        % 
+        % _subsref_ is implicitely called when indexing arrays, _i.e._
+        % when performing _A ( i )_ or _A { i }_, where _A_ is an array and _i_
+        % an integer. It is also called when accessing a property _prop_ of
+        % an object _obj_ , _i.e._ when doing _obj.prop_ .
+        %
+        % The class _interval_ does not support cell indexing ( _s.type_ _=_ _'{ }'_ ).
+        % It allows to access the properties of any _interval_ object ( _s.type_ _=_ _'.'_ ).
+        % At last, array indexing ( _s.type_ _=_ _'( )'_ ) behaves in the same way
+        % as for arrays of scalars: indexing is propagated towards _upper_
+        % and _lower_ , whose selected values are wrapped within a new
+        % _interval_
+        % object.
+        %
+        % Multiple indexing, such as _int(1).lower_ , is supported.
+        
+        function int = subsref(int,s)   % Subscripted reference
+            
+            s1.type = s(1).type ;       % Considers the first level of
+            s1.subs = s(1).subs ;       % indexing for the moment
+            
+            if strcmp(s1.type, '()')    % Array indexing -> propagates towards
+                                        % lower and upper and wraps the result
+                int = interval(subsref(int.lower,s1), subsref(int.upper,s1)) ;
+                
+            elseif strcmp(s1.type, '.') % Property access
+                
+                int = builtin('subsref', int, s1) ;
+                
+            else
+                
+                error('Only () and . indexing are supported') ;
+                
+            end
+            
+            if numel(s) > 1             % In case of multiple indexing,
+                                        % processes the rest of s
+                int = subsref(int,s(2:end)) ;
+                
+            end
+            
+        end % subsref
+        
+        
+        %%
+        % *subsasgn ( int, s, val )*
+        %
+        % Overloads Matlab eponymous built-in function.
+        %
+        % _subsasgn_ is implicitely called when performing indexed assignment
+        % statements, _i.e._ during assignments whose left hand side involves
+        % an indexed array or object (see _subsref_ ).
+        %
+        % _int_ and _s_ meanings are the same as for _subsref_ . _val_
+        % indicates the right hand side of the assignment.
+
+        
+        function int = subsasgn(int,s,val)      % Subscripted assignment
+            
+            if ~isempty(val)                    % Makes the function work even
+                                                % when s and val are empty
+                if strcmp(s(1).type, '.')       % Object indexing
+                                                %  -> propagates towards target property
+                    if strcmp(s(1).subs,'lower')
+                        
+                        if numel(s) > 1
+                        
+                            int.lower = subsasgn(int.lower,s(2:end),val) ;
+                            
+                        elseif isa(val,'interval')
+                            
+                            int.lower = val.lower ;
+                            
+                        else
+                            
+                            int.lower = val ;
+                            
+                        end
+                        
+                    elseif strcmp(s(1).subs,'upper')
+                        
+                        if numel(s) > 1
+                        
+                            int.upper = subsasgn(int.upper,s(2:end),val) ;
+                            
+                        elseif isa(val,'interval')
+                            
+                            int.upper = val.upper ;
+                            
+                        else
+                            
+                            int.upper = val ;
+                            
+                        end
+                    
+                    end
+                
+                elseif strcmp(s(1).type, '()') % Array indexing
+                                               %  -> expands val to make it
+                    if numel(s) == 1           %     match int dimensions
+                    
+                        val = interval.toInterval(val) ;
+                        
+                    else
+                        
+                        val = subsasgn(subsref(int,s(1)), s(2:end), val) ;
+                        
+                    end                        % Set lower and upper to their new values
+                    
+                    int.lower = subsasgn(int.lower,s(1),val.lower) ;
+                    int.upper = subsasgn(int.upper,s(1),val.upper) ;
+
+                end
+
+            end
+            
+        end % subsasgn
+        
+        
+        %%
+        % *cat ( dim, int... )*
+        %
+        % Overloads Matlab eponymous built-in function.
+        %
+        % _cat_ concatenates the _interval_ objects _int_ along their $dim^{th}$
+        % dimension. In fact, their properties _lower_ and _upper_ are
+        % concatenated in the specified way.
+        
+        function obj = cat(varargin)    % cf. eponymous built-in function
+            
+            varargin(cellfun(@(X) isempty(X), varargin(:))) = {interval()} ;
+            
+            if min(cellfun(@(X) isa(X, 'interval'), varargin(2:nargin)))
+                
+                l = cellfun(@(X) X.lower, varargin(2:nargin), 'UniformOutput',false) ; % l: only the lower bounds
+                u = cellfun(@(X) X.upper, varargin(2:nargin), 'UniformOutput',false) ; % u: only the upper bounds
+                
+                obj = interval([]) ;
+                
+                obj.lower = cat(varargin{1}, l{:}) ;    % Processes concatenation
+                obj.upper = cat(varargin{1}, u{:}) ;
+                
+            else
+                
+                error('Only intervals may be concatenated') ;
+                
+            end
+            
+        end % cat
+        
+        
+        %%
+        % *vertcat ( int... )*
+        %
+        % Overloads Matlab eponymous built-in function.
+        %
+        % _vertcat_ concatenates the _interval_ objects _int_ vertically, _i.e._ along
+        % the first dimension. Calls _cat ( 1, int... )_ .
+        
+        function obj = vertcat(varargin)    % cf. eponymous built-in function
+            obj = cat(1,varargin{:}) ;
+        end % vertcat
+            
+        %%
+        % *horzcat ( int... )*
+        %
+        % Overloads Matlab eponymous built-in function.
+        %
+        % _horzcat_ concatenates the _interval_ objects _int_ horizontally, _i.e._ along
+        % the second dimension. Calls _cat ( 2, int... )_ .
+        
+        function obj = horzcat(varargin)    % cf. eponymous built-in function
+            obj = cat(2,varargin{:}) ;
+        end % horzcat
+        
+        
+        %%
+        % *ndims ( int )*
+        %
+        % Overloads Matlab eponymous built-in function.
+        %
+        % _ndims_ returns the number of dimensions of the _interval_ object
+        % _int_ , which is equal to _ndims ( int.lower )_ .
+        
+        function r = ndims(int)             % cf. eponymous built-in function
+            r = ndims(int.lower) ;
+        end % ndims
+        
+        
+        %%
+        % *size ( int [ , n ] )*
+        %
+        % Overloads Matlab eponymous built-in function.
+        %
+        % Returns the size of _interval_ object _int_ , _i.e._ that of
+        % _int.lower_ . If _n_ is specified, returns the depth of _int_
+        % along its $n^{th}$ dimension. Otherwise, returns a vector
+        % containing the size of _int_ along its $i^{th}$ dimension
+        % for each _i_ between 1 and _ndims(int)_ . If one output or less
+        % is required ( _nargout < 2_ ), this vector takes the form of a row vector
+        % of integers. Otherwise, it returns each component of this vector in
+        % distinct scalar outputs.
+        %
+        % Example 1: _s = size ( interval ( [ 1 2 ; 3 4] ) )_ returns _s = [ 2, 1 ]_
+        %            (_nargout_ = 1).
+        %
+        % Example 2: _[n, m] = size ( interval ( [ 1 2 ; 3 4 ] ) )_ returns
+        %            _n = 2_ and _m = 1_.
+        
+        function varargout = size(varargin) % cf. eponymous built-in function
+            if nargout < 2
+                varargout = {size(varargin{1}.lower,varargin{2:nargin})} ;
+            else
+                varargout = num2cell(size(varargin{1}.lower,varargin{2:nargin})) ;
+            end
+        end % size
+        
+        
+        %%
+        % *permute ( a , order )*
+        %
+        % Overloads Matlab eponymous built-in function.
+        %
+        % Përmutes the dimensions of _lower_ and _upper_ as specified.
+        
+        function a = permute(a, order)
+            a.lower = permute(a.lower, order) ;
+            a.upper = permute(a.upper, order) ;
+        end % permute
+        
+        
+        %%
+        % *repmat ( a, i, j )*
+        %
+        % Overloads Matlab _repmat_ function for _interval_ arrays.
+        
+        function r = repmat(a, i, j)
+            r = interval(repmat(a.lower, i, j), repmat(a.upper, i, j)) ;
+        end % repmat
+        
+        
+        %%
+        % *isempty ( obj )*
+        %
+        % Tells whether _interval_ array _a_ is empty or not.
+        
+        function a = isempty(a)
+            a = isempty(a.lower) ;
+        end % isempty
+        
+        
+        %%
+        % *cell( varargin )*
+        %
+        % Overloads Matlab _num2cell_ function for _interval_ arrays (alternative to _num2cell_).
+        
+        function varargout = cell(varargin)
+            
+            if nargin > 0
+                
+                obj = varargin{1} ;
+                
+                varargout = cellfun(@(x,y) interval(x,y),...
+                                        num2cell(obj.lower, varargin{2:end}),...
+                                        num2cell(obj.upper, varargin{2:end}),...
+                                        'UniformOutput', false) ;
+                
+            else
+                
+                varargout = {} ;
+                
+            end
+            
+        end % cell
+        
+        
+        %%
+        % *num2cell ( varargin )*
+        %
+        % Overloads Matlab _num2cell_ function for _interval_ arrays.
+        
+        function varargout = num2cell(varargin)
+            
+            if nargin > 0
+                
+                obj = varargin{1} ;
+                
+                varargout = cellfun(@(x,y) interval(x,y),...
+                                        num2cell(obj.lower, varargin{2:end}),...
+                                        num2cell(obj.upper, varargin{2:end}),...
+                                        'UniformOutput', false) ;
+                
+            else
+                
+                varargout = {} ;
+                
+            end
+            
+        end % num2cell
+        
+        
+        %% Performing arithmetic operations
+        %
+        % The class _interval_ is designed to process intervals vectorially.
+        % As a consequence, it considers only element-wise operations:
+        % matricial computations are not supported. However, Matlab
+        % matricial operators, such as ' * ' or ' / ' , may be used indifferently
+        % instead of their element-wise variants, ' .* ' for ' * ' and ' ./ '
+        % for ' / ' .
+        %
+        % Interval arithmetic operators are rather supposed to be passed
+        % interval objects. However, they also accept arrays of doubles.
+        % In that case, an _interval_ object is instantiated from an array of
+        % doubles with the default constructor (only one argument).
+        %
+        % In addition, every binary arithmetic operator supports singleton
+        % expansion (see also Matlab buit-in function _bsxfun_ ).
+        %
+        % As a result, it is fully possible to write instructions like:
+        %
+        %  interval([1 2 ; 3 4]) + 1
+        %
+        % which returns a 2-by-1 _interval_ object containing the intervals
+        % [2, 3] and [4, 5].
+        %
+        %%
+        % *plus ( a, b )*
+        %
+        % Overloads Matlab operator " + " :
+        %
+        %  a + b = plus(a,b)
+        %
+        % Element-wise addition of the intervals contained in _a_ and _b_ .
+        
+        function r = plus(a, b)
+            
+            a = interval.toInterval(a) ;                % Ensures a and b are interval objects
+            b = interval.toInterval(b) ;
+            
+            rlower = bsxfun(@plus, a.lower, b.lower) ;  % Processes lower and upper bounds
+            rupper = bsxfun(@plus, a.upper, b.upper) ;
+                                            
+            undef = isnan(rlower) | isnan(rupper) ;     % Deals with nan values
+            
+            rlower(undef) = nan ;
+            rupper(undef) = nan ;
+            
+            r = a ;
+            
+            r.lower = rlower ;
+            r.upper = rupper ;
+            
+        end % plus
+        
+        
+        %%
+        % *minus ( a, b )*
+        %
+        % Overloads Matlab operator " - " :
+        %
+        %  a - b = minus(a,b)
+        %
+        % Element-wise subtraction between the intervals contained in _a_ and _b_ .
+        
+        function r = minus(a, b)
+            
+            a = interval.toInterval(a) ;                % Ensures a and b are interval objects
+            b = interval.toInterval(b) ;
+            
+            rlower = bsxfun(@minus, a.lower, b.upper) ; % Processes lower and upper bounds
+            rupper = bsxfun(@minus, a.upper, b.lower) ;
+            
+            undef = isnan(rlower) | isnan(rupper) ;     % Deals with nan values
+            
+            rlower(undef) = nan ;
+            rupper(undef) = nan ;
+            
+            r = a ;
+            
+            r.lower = rlower ;
+            r.upper = rupper ;
+            
+        end % minus
+        
+        
+        %%
+        % *uminus ( a )*
+        %
+        % Overloads Matlab unary operator " - " :
+        %
+        %  -a = uminus(a)
+        %
+        % Element-wise unary minus performed on the intervals contained in _a_ .
+        
+        function r = uminus(a)
+            r = interval(-a.upper, -a.lower) ;
+        end % uminus
+        
+        %%
+        % *uplus ( a )*
+        %
+        % Overloads Matlab unary operator " + " :
+        %
+        %  +a = uplus(a) ( = a)
+        %
+        % Element-wise unary plus performed on the intervals contained in _a_ .
+        
+        function a = uplus(a)
+        end % uplus
+        
+
+        %%
+        % *times ( a, b )*
+        %
+        % Overloads Matlab operator " .* " :
+        %
+        %  a .* b = times(a,b) = mtimes(a,b)
+        %
+        % Element-wise multiplication between the intervals contained in _a_ and _b_ .
+
+        function r = times(a,b)
+            
+            a = interval.toInterval(a) ;    % Ensures a and b are interval objects
+            b = interval.toInterval(b) ;
+            
+            alower = a.lower ;              % Uses local variables to store the bounds
+            aupper = a.upper ;              % of the operands (up to 4 times faster)
+            blower = b.lower ;
+            bupper = b.upper ;
+            
+            % Expands singleton dimensions if needed
+            
+            if (ndims(alower) ~= ndims(blower)) || any(size(alower) ~= size(blower))
+                sa = size(alower) ;
+                sb = size(blower) ;
+                sae = sb ;
+                sbe = sa ;
+                sae(sa ~= 1) = 1 ;
+                sbe(sb ~= 1) = 1 ;
+                alower = repmat(alower, sae) ;
+                aupper = repmat(aupper, sae) ;
+                blower = repmat(blower, sbe) ;
+                bupper = repmat(bupper, sbe) ;
+            end
+            
+            % Creates logical indexes to distinguish different cases during
+            % the computation, depending on the sign of the bounds of a and b
+            
+            alp = alower >= 0 ;             % Sign of the bounds of a and b
+            aup = aupper >= 0 ;
+            blp = blower >= 0 ;
+            bup = bupper >= 0 ;
+            
+            aln = ~alp ;
+            aun = ~aup ;
+            bln = ~blp ;
+            bun = ~bup ;
+            
+            app = alp & aup ;
+            apn = alp & aun ;
+            anp = aln & aup ;
+            ann = aln & aun ;
+            
+            bpp = blp & bup ;
+            bpn = blp & bun ;
+            bnp = bln & bup ;
+            bnn = bln & bun ;
+
+            % Spots nan values in a and b
+            
+            undef = isnan(alower) | isnan(aupper) | isnan(blower) | isnan(bupper) ;
+            
+            % Preallocates the result, then starts the multiplication
+            
+            rlower = alower ;
+            rupper = rlower ;
+            
+            % Let us set down a = [a- a+] and b = [b- b+]
+            
+            % Case 1 (a- >= 0, a+ >= 0, b- >= 0, b+ >= 0)
+            
+            i = app & bpp ;
+            
+            rlower(i) = alower(i) .* blower(i) ;
+            rupper(i) = aupper(i) .* bupper(i) ;
+            
+            % Case 2 (a- >= 0, a+ >= 0, b- >= 0, b+ < 0)
+            
+            i = app & bpn ;
+            
+            rlower(i) = alower(i) .* blower(i) ;
+            rupper(i) = alower(i) .* bupper(i) ;
+            
+            % Case 3 (a- >= 0, a+ >= 0, b- < 0, b+ >= 0)
+            
+            i = app & bnp ;
+            
+            rlower(i) = aupper(i) .* blower(i) ;
+            rupper(i) = aupper(i) .* bupper(i) ;
+
+            % Case 4 (a- >= 0, a+ >= 0, b- < 0, b+ < 0)
+            
+            i = app & bnn ;
+            
+            rlower(i) = aupper(i) .* blower(i) ;
+            rupper(i) = alower(i) .* bupper(i) ;
+
+            % Case 5 (a- >= 0, a+ < 0, b- >= 0, b+ >= 0)
+            
+            i = apn & bpp ;
+            
+            rlower(i) = alower(i) .* blower(i) ;
+            rupper(i) = aupper(i) .* blower(i) ;
+
+            % Case 6 (a- >= 0, a+ < 0, b- >= 0, b+ < 0)
+            
+            i = apn & bpn ;
+            
+            rlower(i) = max(alower(i) .* blower(i), aupper(i) .* bupper(i)) ;
+            rupper(i) = min(alower(i) .* bupper(i), aupper(i) .* blower(i)) ;
+
+            % Case 7 (a- >= 0, a+ < 0, b- < 0, b+ >= 0)
+            
+            i = apn & bnp ;
+            
+            rlower(i) = 0 ;
+            rupper(i) = 0 ;
+
+            % Case 8 (a- >= 0, a+ < 0, b- < 0, b+ < 0)
+            
+            i = apn & bnn ;
+            
+            rlower(i) = aupper(i) .* bupper(i) ;
+            rupper(i) = alower(i) .* bupper(i) ;
+
+            % Case 9 (a- < 0, a+ >= 0, b- >= 0, b+ >= 0)
+            
+            i = anp & bpp ;
+                        
+            rlower(i) = alower(i) .* bupper(i) ;
+            rupper(i) = aupper(i) .* bupper(i) ;
+
+            % Case 10 (a- < 0, a+ >= 0, b- >= 0, b+ < 0)
+            
+            i = anp & bpn ;
+            
+            rlower(i) = 0 ;
+            rupper(i) = 0 ;
+            
+            % Case 11 (a- < 0, a+ >= 0, b- < 0, b+ >= 0)
+            
+            i = anp & bnp ;
+            
+            rlower(i) = min(alower(i) .* bupper(i), aupper(i) .* blower(i)) ;
+            rupper(i) = max(alower(i) .* blower(i), aupper(i) .* bupper(i)) ;
+
+            % Case 12 (a- < 0, a+ >= 0, b- < 0, b+ < 0)
+            
+            i = anp & bnn ;
+            
+            rlower(i) = aupper(i) .* blower(i) ;
+            rupper(i) = alower(i) .* blower(i) ;
+
+            % Case 13 (a- < 0, a+ < 0, b- >= 0, b+ >= 0)
+            
+            i = ann & bpp ;
+            
+            rlower(i) = alower(i) .* bupper(i) ;
+            rupper(i) = aupper(i) .* blower(i) ;
+
+            % Case 14 (a- < 0, a+ < 0, b- >= 0, b+ < 0)
+            
+            i = ann & bpn ;
+            
+            rlower(i) = aupper(i) .* bupper(i) ;
+            rupper(i) = aupper(i) .* blower(i) ;
+
+            % Case 15 (a- < 0, a+ < 0, b- < 0, b+ >= 0)
+            
+            i = ann & bnp ;
+            
+            rlower(i) = alower(i) .* bupper(i) ;
+            rupper(i) = alower(i) .* blower(i) ;
+
+            % Case 16 (a- < 0, a+ < 0, b- < 0, b+ < 0)
+            
+            i = ann & bnn ;
+            
+            rlower(i) = aupper(i) .* bupper(i) ;
+            rupper(i) = alower(i) .* blower(i) ;
+            
+            % Deals with nan values
+            
+            rlower(undef) = nan ;
+            rupper(undef) = nan ;
+            
+            % Fast assembling of the result
+            
+            r = a ;
+            
+            r.lower = rlower ;
+            r.upper = rupper ;
+            
+        end % times
+        
+        
+        %%
+        % *mtimes ( a, b )*
+        %
+        % Overloads Matlab operator " * " :
+        %
+        %  a * b = mtimes(a,b) = times(a,b)
+        %
+        % Element-wise multiplication between the intervals contained in _a_ and _b_ .
+           
+        function r = mtimes(a,b)
+            r = times(a,b) ;
+        end % times
+        
+        
+        %%
+        % *rdivide ( a, b )*
+        %
+        % Overloads Matlab operator " ./ " :
+        %
+        %  a ./ b = rdivide(a,b) = mrdivide(a,b)
+        %
+        % Element-wise multiplication between the intervals contained in _a_ and _b_ .
+        
+        function r = rdivide(a,b)
+            
+            a = interval.toInterval(a) ;    % Ensures a and b are interval objects
+            b = interval.toInterval(b) ;
+            
+            alower = a.lower ;              % Uses local variables to store the bounds
+            aupper = a.upper ;              % of the operands (up to 4 times faster)
+            blower = b.lower ;
+            bupper = b.upper ;
+            
+            % Expands singleton dimensions if needed
+            
+            if (ndims(alower) ~= ndims(blower)) || any(size(alower) ~= size(blower))
+                alower = bsxfun(@plus, alower, zeros(size(blower))) ;
+                aupper = bsxfun(@plus, aupper, zeros(size(bupper))) ;
+                blower = bsxfun(@plus, blower, zeros(size(alower))) ;
+                bupper = bsxfun(@plus, bupper, zeros(size(aupper))) ;
+            end
+            
+            % Creates logical indexes to distinguish different cases during
+            % the computation, depending on the sign of the bounds of a and
+            % b, as well as the zeros of b
+            
+            alp = alower >= 0 ;
+            aup = aupper >= 0 ;
+            blp = blower >  0 ;
+            bup = bupper >  0 ;
+            
+            aln = ~alp ;
+            aun = ~aup ;
+            
+            bln = blower < 0 ;
+            bun = bupper < 0 ;
+            
+            blz = blower == 0 ;
+            buz = bupper == 0 ;
+            
+            bluz = (blp & bun) | (bln & bup) ;  % b contains 0
+            
+            pppp = alp & aup & blp & bup ;
+            ppnn = alp & aup & bln & bun ;
+            pnpp = alp & aun & blp & bup ;
+            pnnn = alp & aun & bln & bun ;
+            nppp = aln & aup & blp & bup ;
+            npnn = aln & aup & bln & bun ;
+            nnpp = aln & aun & blp & bup ;
+            nnnn = aln & aun & bln & bun ;
+            pppz = alp & aup & blp & buz ;
+            ppzp = alp & aup & blz & bup ;
+            ppnz = alp & aup & bln & buz ;
+            ppzn = alp & aup & blz & bun ;
+            pnpz = alp & aun & blp & buz ;
+            pnzp = alp & aun & blz & bup ;
+            pnnz = alp & aun & bln & buz ;
+            pnzn = alp & aun & blz & bun ;
+            nppz = aln & aup & blp & buz ;
+            npzp = aln & aup & blz & bup ;
+            npnz = aln & aup & bln & buz ;
+            npzn = aln & aup & blz & bun ;
+            nnpz = aln & aun & blp & buz ;
+            nnzp = aln & aun & blz & bup ;
+            nnnz = aln & aun & bln & buz ;
+            nnzn = aln & aun & blz & bun ;
+            
+            % Spots nan values in a and b
+            
+            undef = isnan(alower) | isnan(aupper) | isnan(blower) | isnan(bupper) ;
+            
+            % Preallocates the result, then starts the division
+            
+            rlower = alower ;
+            rupper = aupper ;
+            
+            % Let us set down a = [a- a+] and b = [b- b+]
+            
+            % Case 1 (a- >= 0, a+ >= 0, b- > 0, b+ > 0)
+            
+            rlower(pppp) = alower(pppp) ./ bupper(pppp) ;
+            rupper(pppp) = aupper(pppp) ./ blower(pppp) ;
+            
+            % Case 2 (a- >= 0, a+ >= 0, b- < 0, b+ < 0)
+            
+            rlower(ppnn) = aupper(ppnn) ./ bupper(ppnn) ;
+            rupper(ppnn) = alower(ppnn) ./ blower(ppnn) ;
+            
+            % Case 3 (a- >= 0, a+ < 0, b- > 0, b+ > 0)
+            
+            rlower(pnpp) = alower(pnpp) ./ bupper(pnpp) ;
+            rupper(pnpp) = aupper(pnpp) ./ bupper(pnpp) ;
+            
+            % Case 4 (a- >= 0, a+ < 0, b- < 0, b+ < 0)
+            
+            rlower(pnnn) = aupper(pnnn) ./ blower(pnnn) ;
+            rupper(pnnn) = alower(pnnn) ./ blower(pnnn) ;
+            
+            % Case 5 (a- < 0, a+ >= 0, b- > 0, b+ > 0)
+            
+            rlower(nppp) = alower(nppp) ./ blower(nppp) ;
+            rupper(nppp) = aupper(nppp) ./ blower(nppp) ;
+            
+            % Case 6 (a- < 0, a+ >= 0, b- < 0, b+ < 0)
+            
+            rlower(npnn) = aupper(npnn) ./ bupper(npnn) ;
+            rupper(npnn) = alower(npnn) ./ bupper(npnn) ;
+            
+            % Case 7 (a- < 0, a+ < 0, b- > 0, b+ > 0)
+            
+            rlower(nnpp) = alower(nnpp) ./ blower(nnpp) ;
+            rupper(nnpp) = aupper(nnpp) ./ bupper(nnpp) ;
+            
+            % Case 8 (a- < 0, a+ < 0, b- < 0, b+ < 0)
+            
+            rlower(nnnn) = aupper(nnnn) ./ blower(nnnn) ;
+            rupper(nnnn) = alower(nnnn) ./ bupper(nnnn) ;
+            
+            % Case 9 (b contains 0 but 0 is not a bound of b)
+            
+            int0 = bluz | (blz & buz) ;
+            
+            rlower(int0) = nan ;
+            rupper(int0) = nan ;
+            
+            % Case 10 (a- >= 0, a+ >= 0, b- > 0, b+ == 0)
+
+            rlower(pppz) = inf ;
+            rupper(pppz) = a.upper(pppz) ./ blower(pppz) ;
+            
+            % Case 11 (a- >= 0, a+ >= 0, b- == 0, b+ > 0)
+
+            rlower(ppzp) = alower(ppzp) ./ bupper(ppzp) ;
+            rupper(ppzp) = inf ;
+            
+            % Case 12 (a- >= 0, a+ >= 0, b- < 0, b+ == 0)
+
+            rlower(ppnz) = -inf ;
+            rupper(ppnz) = alower(ppnz) ./ blower(ppnz) ;
+            
+            % Case 13 (a- >= 0, a+ >= 0, b- == 0, b+ < 0)
+
+            rlower(ppzn) = aupper(ppzn) ./ bupper(ppzn) ;
+            rupper(ppzn) = -inf ;
+            
+            % Case 14 (a- >= 0, a+ < 0, b- > 0, b+ == 0)
+
+            rlower(pnpz) = inf ;
+            rupper(pnpz) = -inf ;
+            
+            % Case 15 (a- >= 0, a+ < 0, b- == 0, b+ > 0)
+
+            rlower(pnzp) = alower(pnzp) ./ bupper(pnzp) ;
+            rupper(pnzp) = aupper(pnzp) ./ bupper(pnzp) ;
+            
+            % Case 16 (a- >= 0, a+ < 0, b- < 0, b+ == 0)
+
+            rlower(pnnz) = aupper(pnnz) ./ blower(pnnz) ;
+            rupper(pnnz) = alower(pnnz) ./ blower(pnnz) ;
+            
+            % Case 17 (a- >= 0, a+ < 0, b- == 0, b+ < 0)
+            
+            rlower(pnzn) = inf ;
+            rupper(pnzn) = -inf ;
+           
+            % Case 18 (a- < 0, a+ >= 0, b- > 0, b+ == 0)
+
+            rlower(nppz) = alower(nppz) ./ blower(nppz) ;
+            rupper(nppz) = aupper(nppz) ./ blower(nppz) ;
+            
+            % Case 19 (a- < 0, a+ >= 0, b- == 0, b+ > 0)
+
+            rlower(npzp) = -inf ;
+            rupper(npzp) = inf ;
+            
+            % Case 20 (a- < 0, a+ >= 0, b- < 0, b+ == 0)
+
+            rlower(npnz) = -inf ;
+            rupper(npnz) = inf ;
+            
+            % Case 21 (a- < 0, a+ >= 0, b- == 0, b+ < 0)
+
+            rlower(npzn) = aupper(npzn) ./ bupper(npzn) ;
+            rupper(npzn) = alower(npzn) ./ bupper(npzn) ;
+            
+            % Case 22 (a- < 0, a+ < 0, b- > 0, b+ == 0)
+
+            rlower(nnpz) = alower(nnpz) ./ blower(nnpz) ;
+            rupper(nnpz) = -inf ;
+            
+            % Case 23 (a- < 0, a+ < 0, b- == 0, b+ > 0)
+
+            rlower(nnzp) = -inf ;
+            rupper(nnzp) = aupper(nnzp) ./ bupper(nnzp) ;
+           
+            % Case 25 (a- < 0, a+ < 0, b- < 0, b+ == 0)
+
+            rlower(nnnz) = aupper(nnnz) ./ blower(nnnz) ;
+            rupper(nnnz) = inf ;
+            
+            % Case 26 (a- < 0, a+ < 0, b- == 0, b+ < 0)
+
+            rlower(nnzn) = inf ;
+            rupper(nnzn) = alower(nnzn) ./ bupper(nnzn) ;
+            
+            % Deals with nan values
+            
+            rlower(undef) = nan ;
+            rupper(undef) = nan ;
+            
+            % Fast assembling of the result
+            
+            r = a ;
+            
+            r.lower = rlower ;
+            r.upper = rupper ;
+            
+        end % rdivide
+        
+        
+        %%
+        % *mrdivide ( a, b )*
+        %
+        % Overloads Matlab operator " / " :
+        %
+        %  a / b = mrdivide(a,b) = rdivide(a,b)
+        %
+        % Element-wise multiplication between the intervals contained in _a_ and _b_ .
+        
+        function r = mrdivide(a,b)
+            r = rdivide(a,b) ;
+        end % mrdivide
+        
+        
+        %%
+        % *power ( a, n )*
+        %
+        % Overloads Matlab operator " .^ " :
+        %
+        %  a.^n = power(a,n) = mpower(a,n)
+        %
+        % Element-wise power function. _n_ must be a real number.
+        
+        function a = power(a,n)
+            
+            if n < 0                        % If n is negative, comes down to the positive case
+                
+                a = 1/power(a, -n) ;
+                
+            elseif n~= 1                    % n = 1: a^1 = a (no computation is required)
+                
+                if n == round(n)            % n is a positive integer
+                    
+                    if mod(n,2) == 1        % n is odd, x |-> x^n increases on R
+                        
+                        a.lower = power(a.lower, n) ;
+                        a.upper = power(a.upper, n) ;
+                        
+                    elseif n == 0           % n = 0 : a^0 = 1
+                        
+                        a = interval(ones(size(a)), [], 0) ;
+                        
+                    elseif n == 2           % n = 2 (sqr is faster than a generic implementation)
+                        
+                        a = sqr(a) ;
+                        
+                    else                    % n is even (and positive)
+                        
+                        alp = a.lower >= 0 ;
+                        aup = a.upper >= 0 ;
+                        
+                        aln = a.lower <= 0 ;
+                        aun = a.upper <= 0 ;
+                        
+                        pp = alp & aup ;
+                        nn = aln & aun ;
+                        np = aln & aup ;
+                        pn = alp & aun ;
+                        
+                        a.lower(pp) = power(a.lower(pp),n) ;
+                        a.upper(pp) = power(a.upper(pp),n) ;
+                        
+                        alowernn = power(a.upper(nn),n) ;
+                        a.upper(nn) = power(a.lower(nn),n) ;
+                        a.lower(nn) = alowernn ;
+                        
+                        a.upper(np) = max(power(a.lower(np),n), power(a.upper(np),n)) ;
+                        a.lower(np) = 0 ;
+                        
+                        a.lower(pn) = max(power(a.lower(pn),n), power(a.upper(pn),n)) ;
+                        a.upper(pn) = 0 ;
+                        
+                    end
+                    
+                else                        % n is a non-integer positive real
+                                            % x |-> x^n increases on R+
+                    alp = a.lower >= 0 ;
+                    aup = a.upper >= 0 ;
+                    
+                    a.lower(alp) = power(a.lower(alp), n) ;
+                    a.upper(aup) = power(a.upper(aup), n) ;
+                    
+                    a.lower(~alp) = nan ;
+                    a.upper(~aup) = nan ;
+                
+                end
+                
+            end
+            
+        end % power
+        
+        
+        %%
+        % *mpower ( a, n )*
+        %
+        % Overloads Matlab operator " ^ " :
+        %
+        %  a^n = mpower(a,n) = power(a,n)
+        %
+        % Element-wise power function. _n_ must be a real number.
+                
+        function r = mpower(a,b)
+            a = interval.toInterval(a) ;
+            r = power(a,b) ;
+        end % mpower
+        
+        %%
+        % *sqr(a)*
+        %
+        % Square function, called by _power_ and _mpower_ when _n = 2_
+        % (faster than a generic implementation dealing with any _n_ ).
+        
+        function r = sqr(r)
+            
+            a = r.lower ;                           % Extracts the lower bounds (an array of doubles)
+            b = r.upper ;                           % Extracts the upper bounds (an array of doubles)
+            
+            k = (a >= 0) & (b >= 0) ;               % Case 1: a >= 0 and b >= 0
+            
+            r.lower(k) = a(k).^2 ;
+            r.upper(k) = b(k).^2 ;
+            
+            k = (a <= 0) & (b >= 0) ;               % Case 2: a <= 0 and b >= 0
+            
+            r.lower(k) = 0 ;
+            r.upper(k) = max(-a(k),b(k)).^2 ;
+            
+            k = (a >= 0) & (b <= 0) ;               % Case 3: a >= 0 and b <= 0
+            
+            r.lower(k) = max(a(k),-b(k)).^2 ;
+            r.upper(k) = 0 ;
+            
+            k = (a <= 0) & (b <= 0) ;               % Case 4: a <= 0 and b <= 0
+            
+            r.lower(k) = b(k).^2 ;
+            r.upper(k) = a(k).^2 ;
+            
+        end % sqr
+
+        
+        %%
+        % *sqrt ( r, varargin )*
+        %
+        % Element-wise square root operation.
+        %
+        % The domain of the result may be restricted by giving an hint about
+        % its sign in _varargin_ in the following way:
+        %  * 'p' if the result is known to be positive
+        %  * 'n' if the result is known to be negative
+        %
+        % The _varargin_ parameter may be ommitted in case no information is
+        % known about the sign of the result.
+        
+        function r = sqrt(r, varargin)
+            
+            if nargin == 1
+            
+                r = join(sqrt(r,'p'), sqrt(r,'n')) ;
+                
+            else
+                
+                lp = (r.lower >= 0) ;
+                ln = (r.lower <  0) ;
+                up = (r.upper >= 0) ;
+                un = (r.upper <  0) ;
+                
+                p = varargin{1} ;
+                
+                if isa(p, 'char')
+                    
+                    if p == 'p'
+                        
+                        r.lower(lp) = sqrt(r.lower(lp)) ;
+                        r.upper(up) = sqrt(r.upper(up)) ;
+                        
+                        r.lower(ln) = nan ;
+                        r.upper(un) = nan ;
+                        
+                    elseif p == 'n'
+                        
+                        [r.lower(lp), r.upper(up)] = deal(-sqrt(r.upper(lp)), -sqrt(r.lower(up))) ;
+                        
+                        r.lower(ln) = nan ;
+                        r.upper(un) = nan ;
+                        
+                    end
+                    
+                else
+                    
+                    pos = p >= 0 ;
+                    neg = p <= 0 ;
+                    und = ~(pos|neg) ;
+                    
+                    s.type = '()' ;
+                    s.subs = {pos} ;
+                    
+                    r = subsasgn(r,s,sqrt(subsref(r,s), 'p')) ;
+                    
+                    s.subs = {neg} ;
+                    
+                    r = subsasgn(r,s,sqrt(subsref(r,s), 'n')) ;
+                    
+                    s.subs = {und} ;
+                    
+                    r = subsasgn(r,s,sqrt(subsref(r,s))) ;
+                    
+                end
+            
+            end
+            
+        end % sqrt
+        
+        %%
+        % *nthroot ( r, n, varargin )*
+        %
+        % Element-wise nth root operation.
+        %
+        % The domain of the result may be restricted by giving an hint about
+        % its sign in _varargin_ in the following way:
+        %  * 'p' if the result is known to be positive
+        %  * 'n' if the result is known to be negative
+        %
+        % The _varargin_ parameter may be ommitted in case no information is
+        % known about the sign of the result.
+        
+        function r = nthroot(r, n, varargin)
+            
+            if n ~= round(n)                % Checks whether n is an integer
+                
+                error('n must be an integer') ;
+            
+            elseif n < 0                    % n is negative -> comes down to positive case
+                
+                r = 1/nthroot(r, -n, varargin{:}) ;
+            
+            elseif n == 2                   % n = 2 : uses sqrt (faster)
+                
+                r = sqrt(r, varargin{:}) ;
+            
+            elseif mod(n,2) == 0            % n is even: considers negative / positive roots as required
+            
+                if nargin == 2
+                    
+                    r = join(nthroot(r,n,'p'), nthroot(r,n,'n')) ;
+                    
+                else
+                    
+                    lp = (r.lower >= 0) ;
+                    ln = (r.lower <  0) ;
+                    up = (r.upper >= 0) ;
+                    un = (r.upper <  0) ;
+                    
+                    p = varargin{1} ;
+                    
+                    if isa(p, 'char')
+                        
+                        if p == 'p'
+                            
+                            r.lower(lp) = nthroot(r.lower(lp),n) ;
+                            r.upper(up) = nthroot(r.upper(up),n) ;
+                            
+                            r.lower(ln) = nan ;
+                            r.upper(un) = nan ;
+                            
+                        elseif p == 'n'
+                            
+                            r.lower(lp) = -nthroot(r.lower(lp),n) ;
+                            r.upper(up) = -nthroot(r.upper(up),n) ;
+                            
+                            s.type = '()' ;
+                            s.subs = {lp & up} ;
+                            
+                            r = subsasgn(r,s,subsref(r,s).') ;
+                            
+                            r.lower(ln) = nan ;
+                            r.upper(un) = nan ;
+                            
+                        end
+                        
+                    else
+                        
+                        pos = p >= 0 ;
+                        neg = p <= 0 ;
+                        und = ~(pos|neg) ;
+                        
+                        s.type = '()' ;
+                        s.subs = {pos} ;
+                        
+                        r = subsasgn(r,s,nthroot(subsref(r,s), n, 'p')) ;
+                        
+                        s.subs = {neg} ;
+                        
+                        r = subsasgn(r,s,nthroot(subsref(r,s), n, 'n')) ;
+                        
+                        s.subs = {und} ;
+                        
+                        r = subsasgn(r,s,nthroot(subsref(r,s), n)) ;
+                        
+                    end
+                    
+                end
+            
+            elseif n ~= 1                      % Case n = 1: r |-> r, no computation is required
+                                               % For n odd, x |-> x^(1/n) increases on R
+                r.lower = nthroot(r.lower, n) ;
+                r.upper = nthroot(r.upper, n) ;
+                
+            end
+            
+        end % nthroot
+        
+        
+        %%
+        % *exp ( a )*
+        %
+        % Element-wise exponential operation.
+        
+        function a = exp(a)
+            a.lower = exp(a.lower) ;
+            a.upper = exp(a.upper) ;
+        end % exp
+        
+        %%
+        % *ln ( a )*
+        %
+        % Element-wise natural logarithm operation (alternative notation to _log_).
+        
+        function a = ln(a)
+            a = log(a) ;
+        end % ln
+        
+        %%
+        % *log ( a )*
+        %
+        % Element-wise natural logarithm operation.
+        
+        function a = log(a)
+            
+            undef = ~(a.lower > 0) | ~(a.upper > 0) ;
+            
+            a.lower(~undef) = log(a.lower(~undef)) ;
+            a.upper(~undef) = log(a.upper(~undef)) ;
+            
+            a.lower(undef) = nan ;
+            a.upper(undef) = nan ;
+            
+        end % log
+        
+        
+        
+        
+        %%
+        % *mod ( a, d )*
+        %
+        % Overloads Matlab _mod_ function for _interval_ arrays.
+        
+        function r = mod(a,d)
+            r = mod(a.lower, d) ;
+            r = interval(r, a.upper - a.lower + r) ;
+        end % mod
+        
+        %%
+        % *sin ( a )*
+        %
+        % Element-wise sine operation.
+        
+        function r = sin(a)
+            
+            undef = isnan(a) ;
+            
+            modal = a.lower > a.upper ;
+            
+            s.type = '()' ;
+            s.subs = {modal} ;
+            
+            a = subsasgn(a,s, subsref(a,s).') ;
+            
+            s.subs = {~undef} ;
+            
+            a = subsasgn(a, s, mod(subsref(a, s), 2*pi)) ;
+            
+            r = interval(-ones(size(a)), ones(size(a))) ;
+            
+            s2pi = width(a) < 2*pi ;
+            
+            s.subs = {s2pi} ;
+            
+            a2pi = subsref(a,s) ;
+            
+            a2pil = sin(a2pi.lower) ;
+            a2piu = sin(a2pi.upper) ;
+            
+            u = min(a2pil, a2piu) ;
+            v = max(a2pil, a2piu) ;
+            
+            r.lower(s2pi & isout(1.5*pi,a) & isout(3.5*pi,a)) = u(isout(1.5*pi,a2pi) & isout(3.5*pi,a2pi)) ; 
+            r.upper(s2pi & isout(0.5*pi,a) & isout(2.5*pi,a)) = v(isout(0.5*pi,a2pi) & isout(2.5*pi,a2pi)) ; 
+            
+            s.subs = {modal} ;
+            
+            r = subsasgn(r,s, subsref(r,s).') ;
+            
+            r.lower(undef) = nan ;
+            r.upper(undef) = nan ;
+            
+        end % sin
+        
+        
+        %%
+        % *cos ( a )*
+        %
+        % Element-wise cosine operation.
+        
+        function a = cos(a)
+            a = sin(a + .5*pi) ;
+        end % cos
+        
+        
+        %%
+        % *asin ( a, varargin )*
+        %
+        % Element-wise arcsine operation.
+        %
+        % A domain containing the result may be specified in _varargin_.
+        
+        function a = asin(a, varargin)
+            
+            mia = a.lower > a.upper ;
+            
+            [a.lower(mia) a.upper(mia)] = deal(a.upper(mia), a.lower(mia)) ;
+            
+            undef = ~(a.lower >= -1) | ~(a.upper <= 1) ;
+            
+            ii = (a.lower > -1) & (a.upper < 1) ;
+            ei = (a.lower == -1) & (a.upper < 1) ;
+            ie = (a.lower > -1) & (a.upper == 1) ;
+            ee = (a.lower == -1) & (a.upper == 1) ;
+            
+            if nargin == 1
+                
+                a.lower(ii) = asin(a.lower(ii)) ;
+                a.upper(ii) = asin(a.upper(ii)) ;
+                
+                [a.lower(ei), a.upper(ei)] = deal(-pi-asin(a.upper(ei)), asin(a.upper(ei))) ;
+                
+                [a.lower(ie), a.upper(ie)] = deal(asin(a.lower(ie)), pi-asin(a.lower(ie))) ;
+                
+                a.lower(ee) = -inf ;
+                a.upper(ee) = inf ;
+                
+            else
+                
+                d = varargin{1} ;
+                
+                asin1 = asin(a) ;
+                
+                k = ceil((d.lower - asin1.upper)*.5/pi) - 1 ;
+                
+                l = asin1.lower + 2*k*pi ;
+                
+                k = floor((d.upper - asin1.lower)*.5/pi) + 1 ;
+                
+                u = asin1.upper + 2*k*pi ;
+                
+                
+                asin2 = pi - interval(asin1.lower(ii), asin1.upper(ii)) ;
+                
+                dii = interval(d.lower(ii), d.upper(ii)) ;
+                
+                k = ceil((dii.lower + asin2.upper-pi)*.5/pi) - 1 ;
+                
+                l(ii) = min(l(ii), asin2.lower + 2*k*pi) ;
+                
+                k = floor((dii.upper + asin2.lower-pi)*.5/pi) + 1 ;
+                
+                u(ii) = max(u(ii), asin2.upper + 2*k*pi) ;
+                
+                
+                a = d & interval(l,u) ;
+                
+            end
+            
+            [a.lower(mia) a.upper(mia)] = deal(a.upper(mia), a.lower(mia)) ;
+            
+            a.lower(undef) = nan ;
+            a.upper(undef) = nan ;
+            
+        end % arcsin
+        
+        
+        %%
+        % *asin ( a, varargin )*
+        %
+        % Element-wise arccosine operation.
+        %
+        % A domain containing the result may be specified in _varargin_.
+        
+        function a = acos(a, varargin)
+            
+            if nargin == 1
+            
+                a = .5*pi - asin(a) ;
+                
+            else
+                
+                d = interval.toInterval(varargin{1}) ;
+                
+                a = .5*pi - asin(a, .5*pi - d) ;
+                
+            end
+            
+        end % acos
+        
+        
+                %%
+        % *abs ( r )*
+        %
+        % Element-wise absolute value operation.
+        
+        function r = abs(r)
+            
+            np = (r.lower <= 0) & (r.upper >= 0) ;
+            pn = (r.lower >= 0) & (r.upper <= 0) ;
+            nn = (r.lower <= 0) & (r.upper <= 0) ;
+            
+            r.upper(np) = max(-r.lower(np), r.upper(np)) ;
+            r.lower(np) = 0 ;
+            
+            r.lower(pn) = max(r.lower(pn), -r.upper(pn)) ;
+            r.upper(pn) = 0 ;
+            
+            s.type = '()' ;
+            s.subs = {nn} ;
+            
+            r = subsasgn(r, s, -subsref(r,s)) ;
+            
+        end % abs
+        
+        
+        %% Binary relations
+        %
+        %%
+        % *lt ( a, b )*
+        %
+        % Overloads Matlab operator " < " :
+        %
+        %  (a < b) = lt(a,b)
+        %
+        % Element-wise _less than_ logical test. For two single
+        % intervals _[a]_ and _[b]_ :
+        %
+        % $$([a] < [b]) \Leftrightarrow (\, \forall (x,y) \in [a] \times [b] \, , \; x < y)$$
+        
+        function r = lt(a,b)
+            r = bsxfun(@lt, interval.toInterval(a).upper, interval.toInterval(b).lower) ;
+        end % lt
+        
+        %%
+        % *gt ( a, b )*
+        %
+        % Overloads Matlab operator " > " :
+        %
+        %  (a > b) = gt(a,b)
+        %
+        % Element-wise _greater than_ logical test. For two single
+        % intervals _[a]_ and _[b]_ :
+        %
+        % $$([a] > [b]) \Leftrightarrow (\, \forall (x,y) \in [a] \times [b] \, , \; x > y)$$
+        
+        function r = gt(a,b)
+            r = bsxfun(@gt, interval.toInterval(a).lower, interval.toInterval(b).upper) ;
+        end % gt
+        
+        
+        %%
+        % *le ( a, b )*
+        %
+        % Overloads Matlab operator " <= " :
+        %
+        %  (a <= b) = le(a,b)
+        %
+        % Element-wise _less than or equal to_ logical test. For two single
+        % intervals _[a]_ and _[b]_ :
+        %
+        % $$([a] \leq [b]) \Leftrightarrow (\, \forall (x,y) \in [a] \times [b] \, , \; x \leq y)$$
+        
+        function r = le(a,b)
+            r = bsxfun(@le, interval.toInterval(a).upper, interval.toInterval(b).lower) ;
+        end % le
+        
+        %%
+        % *ge ( a, b )*
+        %
+        % Overloads Matlab operator " >= " :
+        %
+        %  (a >= b) = ge(a,b)
+        %
+        % Element-wise _greater than or equal to_ logical test. For two single
+        % intervals _[a]_ and _[b]_ :
+        %
+        % $$([a] \geq [b]) \Leftrightarrow (\, \forall (x,y) \in [a] \times [b] \, , \; x \geq y)$$
+        
+        function r = ge(a,b)
+            r = bsxfun(@ge, interval.toInterval(a).lower, interval.toInterval(b).upper) ;            
+        end % ge
+        
+        
+        %%
+        % *eq ( a, b )*
+        %
+        % Overloads Matlab operator " == " :
+        %
+        %  (a == b) = eq(a,b)
+        %
+        % Element-wise _equal to_ logical test. For two single
+        % intervals _[a]_ and _[b]_ :
+        %
+        % $$([a] = [b]) \Leftrightarrow (\, ( \, [a] \subset [b] \, ) \wedge ( \, [b] \subset [a] \, ) \,)$$
+        
+        function r = eq(a,b)
+            
+            a = interval.toInterval(a) ;
+            b = interval.toInterval(b) ;
+            
+            r = bsxfun(@eq, a.lower, b.lower) & bsxfun(@eq, a.upper, b.upper) ;
+            
+        end % eq
+        
+        
+        %%
+        % *ne ( a, b )*
+        %
+        % Overloads Matlab operator " ~= " :
+        %
+        %  (a ~= b) = ne(a,b)
+        %
+        % Element-wise _not equal to_ logical test. For two single
+        % intervals _[a]_ and _[b]_ :
+        %
+        % $$([a] \not= [b]) \Leftrightarrow (\, ( \, [a] \not\subset [b] \, ) \vee ( \, [b] \not\subset [a] \, ) \,)$$
+        
+        function r = ne(a,b)
+            
+            a = interval.toInterval(a) ;
+            b = interval.toInterval(b) ;
+                        
+            r = bsxfun(@ne, a.lower, b.lower) | bsxfun(@ne, a.upper, b.upper) ;
+            
+        end % ne
+        
+        
+        %%
+        % *and ( a, b )*
+        %
+        % Overloads Matlab operator " & " :
+        %
+        %  a & b = and(a,b)
+        %
+        % This element-wise operation computes the intersection of _a_ and
+        % _b_. For two single intervals _[a]_ and _[b]_ :
+        %
+        % $$( \, [a] \; \& \; [b] \, ) = ( \, [a] \, \cap \, [b] \, )$$
+        
+        function r = and(a,b)       % r = intersection(a,b)
+            a = interval.toInterval(a) ;
+            b = interval.toInterval(b) ;
+            r = interval(bsxfun(@max,a.lower,b.lower), bsxfun(@min,a.upper,b.upper)) ;
+        end % and
+        
+        
+        %%
+        % *or ( a, b )*
+        %
+        % Overloads Matlab operator " | " :
+        %
+        %  a | b = or(a,b)
+        %
+        % This element-wise operation computes the union of _a_ and
+        % _b_. For two single intervals _[a]_ and _[b]_ :
+        %
+        % $$( \, [a] \; | \; [b] \, ) = ( \, [a] \, \cup \, [b] \, )$$
+        
+        function r = or(a,b)        % r = union(a,b)
+            a = interval.toInterval(a) ;
+            b = interval.toInterval(b) ;
+            r = interval(bsxfun(@min,a.lower,b.lower), bsxfun(@max,a.upper,b.upper)) ;
+        end % or
+        
+        
+        %%
+        % *isin ( a, b)*
+        %
+        % Element-wise inclusion test between the intervals contained in
+        % _a_ and those contained in _b_ .
+        %
+        % $$ isin(a,b) = ( \, a \, \subset \, b \, )$$
+        
+        function r = isin(a,b)
+            a = interval.toInterval(a) ;
+            b = interval.toInterval(b) ;
+            r = bsxfun(@ge, a.lower, b.lower) & bsxfun(@le, a.upper, b.upper) ;
+        end % isin
+        
+        
+        %%
+        % *isout ( a, b)*
+        %
+        % Element-wise exclusion test between the intervals contained in
+        % _a_ and those contained in _b_ .
+        %
+        % $$ isout(a,b) = ( \, a \, \cap \, b \, = \, \emptyset \,)$$
+        
+        function r = isout(a,b)
+            a = interval.toInterval(a) ;
+            b = interval.toInterval(b) ;
+            r = bsxfun(@lt, a.upper, b.lower) | bsxfun(@gt, a.lower, b.upper) ;
+        end % isout
+        
+        
+        %% Other operations
+        %
+        %%
+        % *dual ( a )*
+        %
+        % Inverse the modality of _a_ : if _a = [ a.lower, a.upper ]_, then
+        % _dual(a) = [ a.upper, a.lower ]_.
+        
+        function b = dual(a)         % b = dual(a)   (switches the modality)               
+                b = a ;
+                b.lower = a.upper ;
+                b.upper = a.lower ;
+        end
+        
+        
+        %%
+        % *transpose ( a )*
+        %
+        % Overloads Matlab operator " .' " :
+        %
+        %  a.' = transpose(a)
+        %
+        % This element-wise operation switches the modality of _a_ (see
+        % _dual_ ).
+        
+        function b = transpose(a)    % r = dual(a)   (switches the modality)
+                b = a ;
+                b.lower = a.upper ;
+                b.upper = a.lower ;
+        end % transpose
+        
+        
+        %%
+        % *ctranspose ( a )*
+        %
+        % Overloads Matlab operator " ' " :
+        %
+        %  a' = ctranspose(a)
+        %
+        % Calls _ctranspose_ on internal arrays _lower_ and _upper_ .
+        % Switches their first and second dimensions.
+        
+        function a = ctranspose(a)  % r = r'        (transposes the internal arrays)
+            a.lower = a.lower' ;
+            a.upper = a.upper' ;
+        end % ctranspose
+        
+        
+        %%
+        % *width ( a )*
+        %
+        % Returns the width of each interval contained in _a_ , _i.e._
+        % their upper bounds minus their lower bounds. For any interval
+        % _a_, _width(a) = a.upper - a.lower_.
+        
+        function a = width(a)
+            a = a.upper - a.lower ;
+        end % width
+        
+        
+        %%
+        % *widthMax ( a )*
+        %
+        % Returns the width of the _largest_ interval contained in _a_
+        % (_largest_ : in the way defined by _width_).
+        
+        function r = widthMax(a)
+            r = max(a.upper(:) - a.lower(:)) ;
+        end % widthMax
+        
+        
+        %%
+        % *mid ( a )*
+        %
+        % Returns the median points of the intervals contained in _a_ .
+        
+        function r = mid(a)
+            r = .5*(a.lower + a.upper) ;
+        end % mid
+        
+        
+        %%
+        % *bisect ( a )*
+        %
+        % Bisects the boxes contained in _a_, with respect to their largest component
+        % (_i.e._ the largest interval of each one of them), and returns the resulting
+        % boxes.
+        %
+        % For a given box, the width of its components is considered relatively to a
+        % given vector, _w0_. A value $+\infty$ in _w0_ indicates that no bisection shall
+        % be performed along the corresponding component(s) in _a_.
+        %
+        % The input _a_ and the output _r_ are arrays of _interval_ objects that are
+        % interpreted using the parameters _bisectdim_ and _catdim_:
+        %
+        % * _bisectdim_ : indicates the dimension along which intervals are placed in
+        % the array to form a box (_e.g._ 2 if boxes are given as row vectors)
+        %
+        % * _catdim_ : indicates the dimension of the box list structure in the array
+        % (_e.g._ 1 if a row of the array contains a box)
+        %
+        % *Example:* Let us consider _A_, defined as:
+        % 
+        % $$ A = \left[ \begin{tabular}{cc}
+        %           {[ 0,1 ]} & {[ 0,4 ]} \\
+        %           {[ 1,2 ]} & {[ 0,4 ]} \\
+        %        \end{tabular} \right] $$
+        %
+        % Assuming _bisectdim = 2_ and _catdim = 1_, _A_ contains two boxes,
+        % [0,1] x [0,4] on one hand, and [1,2] x [0,4] on the other hand.
+        % Assuming also _w0 = 1_, _bisect_ returns the following _interval_ array _R_ :
+        %
+        % $$ R = \left[ \begin{tabular}{cc}
+        %           {[ 0,1 ]} & {[ 0,2 ]} \\
+        %           {[ 1,2 ]} & {[ 0,2 ]} \\
+        %           {[ 0,1 ]} & {[ 2,4 ]} \\
+        %           {[ 1,2 ]} & {[ 2,4 ]} \\
+        %        \end{tabular} \right] $$
+        
+        function r = bisect(a, w0, bisectdim, catdim)
+            
+            if isempty(a)                   % Checks whether a is empty
+                
+                r = a ;
+                
+            else                            % If not...
+            
+                % Computes imax, a vector along catdim indicating, for each box, the index
+                % of the component to be bisected (i.e. the largest one with respect to w0):
+                %  - boxdim : number of components per box (i.e. the number of dimensions of a box)
+                %  -  i = [ 1  bisectdim  3  4  ...  bisectdim-1  2  bisectdim+1  ...  n ]
+                %                 ^                               ^
+                %                 2                            bisectdim
+                %  - w0(:)' : makes w0 a row vector
+                %  - permute(w0(:)',i) : permutes the 2nd and the bisectdimth dimensions of w0(:)',
+                %    i.e. makes w0 a vector along bisectdim
+                %  - max(u, [], bisectdim) : returns the maximal values of u along its bisectdimth dimension
+                %   (first output), and their position in u (second output)
+                
+                boxdim = size(a,bisectdim) ;
+                
+                i = 1:boxdim ;
+                
+                i(2) = bisectdim ;
+                i(bisectdim) = 2 ;
+                
+                [~, imax] = max(bsxfun(@rdivide, width(a), permute(w0(:)',i)), [], bisectdim) ;
+                
+                % Computes index, a boolean vector indicating the positions of the intervals to be bisected in a:
+                %  - permute(1:boxdim, i) : creates a vector [ 1  2  ...  boxdim ] along the bisectdimth dimension
+                %  - bsxfun(@eq, imax, permute(1:boxdim, i)) : tells where are located the intervals identified
+                %    by imax in a, returns a logical index
+
+                index = bsxfun(@eq, imax, permute(1:boxdim, i)) ;
+                
+                % Computes the resulting vector of boxes...
+
+                r = a ;                                         % Copies a
+                
+                mid = .5 * (r.upper(index) + r.lower(index)) ;  % Computes the center of the intervals to be bisected
+                
+                r.upper(index) = mid ;                          % Lower half of a
+                
+                a.lower(index) = mid ;                          % Upper half of a ; reuses parameter a to store the result
+                
+                r = cat(catdim, r, a) ;                         % Concatenates the boxes along the specified dimension
+                
+            end
+            
+        end % bisect
+        
+        
+        %%
+        % *join ( a, b [, dim] )*
+        %
+        % _join_ may be called in the following ways:
+        %
+        % * *join(a, b)*
+        %
+        % Performs element-wise union between _interval_ arrays _a_ and _b_
+        % (_a_ and _b_ shall have the same size).
+        %
+        % In the case _b_ is an array of singletons or a single singleton, _b_
+        % may be possibly an array of doubles.
+        %
+        % * *join(a, [ ], dim)*
+        %
+        % Joins the intervals contained in an _interval_ array _a_
+        % along its $dim^{th}$ dimension.
+        
+        function r = join(a, b, varargin)
+            
+            if nargin == 2
+            
+                if isa(b, 'interval')
+
+                    r = a ;
+
+                    r.lower = min(a.lower, b.lower) ;
+                    r.upper = max(a.upper, b.upper) ;
+
+                    r.lower(isnan(a.lower) | isnan(b.lower)) = nan ;
+                    r.upper(isnan(a.upper) | isnan(b.upper)) = nan ;
+
+                else
+
+                    r = a ;
+
+                    r.lower = min(a.lower, [], b) ;
+                    r.upper = max(a.upper, [], b) ;
+
+                end
+                
+            else
+                
+                r = a ;
+                
+                r.lower = min(a.lower, [], varargin{1}) ;
+                r.upper = max(a.upper, [], varargin{1}) ;
+                
+            end
+            
+        end % join
+        
+        
+        %%
+        % *inter ( a, b [, dim] )*
+        %
+        % _inter_ may be called in the following ways:
+        %
+        % * *inter(a, b)*
+        %
+        % Performs element-wise intersection between _interval_ arrays _a_ and _b_
+        % (_a_ and _b_ shall have the same size).
+        %
+        % In the case _b_ is an array of singletons or a single singleton, _b_
+        % may be possibly an array of doubles.
+        %
+        % * *inter(a, [ ], dim)*
+        %
+        % Intersects the intervals contained in an _interval_ array _a_
+        % along its $dim^{th}$ dimension.
+        %
+        % *Example* : Let us consider:
+        %
+        % $$ A = \left[ \begin{tabular}{cc}
+        %                   {[ 0,4 ]} & {[ 1,2 ]} \\
+        %                   {[ 0,1 ]} & {[ 3,4 ]} \\
+        %               \end{tabular} \right] $$
+        %
+        % Then:
+        %
+        % $$ inter(A, [~], 2) = \left[ \begin{tabular}{cc}
+        %                       {[ 1,2 ]} \\
+        %                       {[ 3,1 ]} \\
+        %                      \end{tabular} \right] $$
+        %
+        % $$ inter(A, [~], 1) = \left[ \begin{tabular}{cc}
+        %                       {[ 0,1 ]} & {[ 3,2 ]} \\
+        %                      \end{tabular} \right] $$
+        
+        function r = inter(a, b, varargin)
+
+            if nargin == 2
+            
+                if isa(b, 'interval')
+
+                    r = a ;
+
+                    r.lower = max(a.lower, b.lower) ;
+                    r.upper = min(a.upper, b.upper) ;
+
+                    r.lower(isnan(a.lower) | isnan(b.lower)) = nan ;
+                    r.upper(isnan(a.upper) | isnan(b.upper)) = nan ;
+
+                else
+
+                    r = a ;
+
+                    r.lower = max(a.lower, [], b) ;
+                    r.upper = min(a.upper, [], b) ;
+
+                end
+                
+            else
+                
+                r = a ;
+                
+                r.lower = max(a.lower, [], varargin{1}) ;
+                r.upper = min(a.upper, [], varargin{1}) ;
+                
+            end
+            
+        end % inter
+        
+        
+        %%
+        % *volume ( a, dim )*
+        %
+        % Computes the volume of each box of a _box_ array.
+        %
+        % The input _a_ is an _interval_ array. Boxes are inferred from _a_ by
+        % considering vectors of intervals aligned along its $dim^{th}$ dimension.
+        
+        function a = volume(a, dim)
+            a = prod(a.upper-a.lower, dim) ;
+        end % volume
+        
+        
+        %%
+        % *sum ( a, varargin )*
+        %
+        % Overloads Matlab _sum_ function for _interval_ arrays.
+        
+        function a = sum(a, varargin)
+            if nargin == 1
+                a = interval(sum(a.lower), sum(a.upper)) ;
+            else
+                dim = varargin{1} ;
+                a = interval(sum(a.lower, dim), sum(a.upper, dim)) ;
+            end
+        end % sum
+        
+        
+        %%
+        % *mean ( a, varargin )*
+        %
+        % Overloads Matlab _mean_ function for _interval_ arrays.
+        
+        function a = mean(a, varargin)
+            if nargin == 1
+                a = interval(mean(a.lower), mean(a.upper)) ;
+            else
+                dim = varargin{1} ;
+                a = interval(mean(a.lower, dim), mean(a.upper, dim)) ;
+            end
+        end % mean
+        
+        
+        %%
+        % *isreal ( a )*
+        %
+        % Tells whether the bounds of the intervals contained in _a_ are both real,
+        % for each one of them.
+        
+        function a = isreal(a)
+            a = isreal(a.lower) & isreal(a.upper) ;
+        end % isreal
+        
+        
+        %%
+        % *isnan ( a )*
+        %
+        % Tells whether at least one bound of the intervals contained in _a_ is _not a number_,
+        % for each one of them.
+        
+        function a = isnan(a)
+            a = isnan(a.lower) | isnan(a.upper) ;
+        end % isnan
+        
+        
+    end % methods
+    
+end % classdef
+
+##### SOURCE END #####
+--></body></html>

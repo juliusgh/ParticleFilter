@@ -1,0 +1,154 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Doughnut example</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2013-01-16"><meta name="DC.source" content="doughnut_parameters.m"><style type="text/css">
+
+body {
+  background-color: white;
+  margin:10px;
+}
+
+h1 {
+  color: #990000; 
+  font-size: x-large;
+}
+
+h2 {
+  color: #990000;
+  font-size: medium;
+}
+
+/* Make the text shrink to fit narrow windows, but not stretch too far in 
+wide windows. */ 
+p,h1,h2,div.content div {
+  max-width: 600px;
+  /* Hack for IE6 */
+  width: auto !important; width: 600px;
+}
+
+pre.codeinput {
+  background: #EEEEEE;
+  padding: 10px;
+}
+@media print {
+  pre.codeinput {word-wrap:break-word; width:100%;}
+} 
+
+span.keyword {color: #0000FF}
+span.comment {color: #228B22}
+span.string {color: #A020F0}
+span.untermstring {color: #B20000}
+span.syscmd {color: #B28C00}
+
+pre.codeoutput {
+  color: #666666;
+  padding: 10px;
+}
+
+pre.error {
+  color: red;
+}
+
+p.footer {
+  text-align: right;
+  font-size: xx-small;
+  font-weight: lighter;
+  font-style: italic;
+  color: gray;
+}
+
+  </style></head><body><div class="content"><h1>Doughnut example</h1><p>This example is meant to show how to define a 2-dimensional inversion problem, in order to solve it using <a href="../../html/vsivia.html">vsivia</a>.</p><p>We will consider the function <i>f</i>, defined as follows:</p><p><img src="doughnut_parameters_eq17246.png" alt="$$ f : (x,y) \mapsto x^2 + y^2 + x \cdot y $$"></p><p>The purpose will consist in determining an inner and an outer enclosures of the inverse image of <i>f</i> on [1,2], using paving. The box [-3,3]x[-3,3] will be taken as an initial outer enclosure of the sought-after solution set.</p><p>First of all, parameters for <a href="../../html/vsivia.html">vsivia</a> shall be specified in a class inherited from <a href="../../html/vsivia_parameters.html">vsivia_parameters</a>.</p><pre class="codeinput"><span class="keyword">classdef</span> doughnut_parameters &lt; vsivia_parameters
+</pre><pre class="codeinput">    properties
+</pre><p><i>algorithm</i> tells <a href="../../html/vsivia.html">vsivia</a> the kind of problem to be solved, here <i>inversion</i>.</p><pre class="codeinput">        algorithm = <span class="string">'inversion'</span> ;
+</pre><p><i>U0</i> indicates the initial box that is tested at first and then possibly bisected. In this example, we consider the box [-3,3]x[-3,3].</p><pre class="codeinput">        U0 = [ -3 3 ; -3 3] ;
+</pre><p><i>Y0</i> gives the value to be inverted. Here, we consider [1,2].</p><pre class="codeinput">        Y0 = [ 1 2 ] ;
+</pre><p><i>epsilon</i> specifies the accuracy wanted for the result. A relative <i>epsilon</i> of 5 %, with respect to the size of <i>U0</i>, is chosen: <a href="../../html/vsivia.html">vsivia</a> will not bisect any boxes smaller than 5 % of the size of <i>U0</i>.</p><pre class="codeinput">        epsilon = <span class="string">'5 %'</span> ;
+</pre><pre class="codeinput">    <span class="keyword">end</span> <span class="comment">% properties</span>
+</pre><p>At last, the method <i>compute</i> is overriden in order to define the function <i>f</i>. Input variables of <i>compute</i> appear here separetely.</p><pre class="codeinput">    methods (Static)
+
+        <span class="keyword">function</span> z = compute(x,y)
+
+            z = x^2 + y^2 + x*y ;
+
+        <span class="keyword">end</span>
+
+    <span class="keyword">end</span> <span class="comment">% methods</span>
+</pre><pre class="codeinput"><span class="keyword">end</span> <span class="comment">% classdef</span>
+</pre><p class="footer"><br>
+      Published with MATLAB&reg; 7.11<br></p></div><!--
+##### SOURCE BEGIN #####
+%% Doughnut example
+%
+% This example is meant to show how to define a 2-dimensional inversion
+% problem, in order to solve it using <../../html/vsivia.html vsivia>.
+%
+% We will consider the function _f_, defined as follows:
+%
+% $$ f : (x,y) \mapsto x^2 + y^2 + x \cdot y $$
+% 
+% The purpose will consist in determining an inner and an outer enclosures
+% of the inverse image of _f_ on [1,2], using paving. The box [-3,3]x[-3,3]
+% will be taken as an initial outer enclosure of the sought-after solution
+% set.
+%
+% First of all, parameters for <../../html/vsivia.html vsivia> shall be
+% specified in a class inherited from <../../html/vsivia_parameters.html
+% vsivia_parameters>.
+
+classdef doughnut_parameters < vsivia_parameters
+    
+    properties
+        
+        %%
+        % _algorithm_ tells <../../html/vsivia.html vsivia> the kind of
+        % problem to be solved, here _inversion_.
+        
+        algorithm = 'inversion' ;
+        
+        %%
+        % _U0_ indicates the initial box that is tested at first and
+        % then possibly bisected. In this example, we consider the box
+        % [-3,3]x[-3,3].
+        
+        U0 = [ -3 3 ; -3 3] ;
+        
+        %%
+        % _Y0_ gives the value to be inverted. Here, we consider [1,2].
+        
+        Y0 = [ 1 2 ] ;
+        
+        %%
+        % _epsilon_ specifies the accuracy wanted for the result. A
+        % relative _epsilon_ of 5 %, with respect to the size of _U0_, is
+        % chosen: <../../html/vsivia.html vsivia> will not bisect any
+        % boxes smaller than 5 % of the size of _U0_.
+        
+        epsilon = '5 %' ;
+        
+    end % properties
+    
+    
+    %%
+    % At last, the method _compute_ is overriden in order to define the
+    % function _f_. Input variables of _compute_ appear here
+    % separetely.
+        
+    methods (Static)
+        
+        function z = compute(x,y)
+            
+            z = x^2 + y^2 + x*y ;
+            
+        end
+        
+    end % methods
+    
+end % classdef
+
+##### SOURCE END #####
+--></body></html>

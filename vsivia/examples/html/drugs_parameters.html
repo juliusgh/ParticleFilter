@@ -1,0 +1,201 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Modeling the intravenous injection of a drug into a subject</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2013-01-16"><meta name="DC.source" content="drugs_parameters.m"><style type="text/css">
+
+body {
+  background-color: white;
+  margin:10px;
+}
+
+h1 {
+  color: #990000; 
+  font-size: x-large;
+}
+
+h2 {
+  color: #990000;
+  font-size: medium;
+}
+
+/* Make the text shrink to fit narrow windows, but not stretch too far in 
+wide windows. */ 
+p,h1,h2,div.content div {
+  max-width: 600px;
+  /* Hack for IE6 */
+  width: auto !important; width: 600px;
+}
+
+pre.codeinput {
+  background: #EEEEEE;
+  padding: 10px;
+}
+@media print {
+  pre.codeinput {word-wrap:break-word; width:100%;}
+} 
+
+span.keyword {color: #0000FF}
+span.comment {color: #228B22}
+span.string {color: #A020F0}
+span.untermstring {color: #B20000}
+span.syscmd {color: #B28C00}
+
+pre.codeoutput {
+  color: #666666;
+  padding: 10px;
+}
+
+pre.error {
+  color: red;
+}
+
+p.footer {
+  text-align: right;
+  font-size: xx-small;
+  font-weight: lighter;
+  font-style: italic;
+  color: gray;
+}
+
+  </style></head><body><div class="content"><h1>Modeling the intravenous injection of a drug into a subject</h1><!--introduction--><p>This application presents a more advanced way to use <a href="../../html/vsivia.html">vsivia</a>, in comparison with <a href="torus_parameters.html">torus_parameters</a> and <a href="doughnut_parameters.html">doughnut_parameters</a>.</p><p>The purpose of this application is to model, by a mathematical expression, the effect of a bolus intravenous injection of a drug into a subject. Concretely, we will aim at modeling the evolution of the blood concentration of the drug, using a function <i>f</i> of the kind:</p><p><img src="drugs_parameters_eq19187.png" alt="$$ f : (a, \alpha, b, \beta, t) \mapsto a \cdot e^{- \alpha \cdot t} + b&#xA;\cdot e^{- \beta \cdot t} $$"></p><p>where <i>t</i> is the time elapsed since the injection. Enclosures of the four other parameters, that are constant parameters, will be computed using <a href="../../html/vsivia.html">vsivia</a>, from real measurements that give the value of <i>f</i> for some known values of <i>t</i>. The measurements considered here are:</p><p><img src="drugs_parameters_eq27428.png" alt="$$ \begin{tabular}{|c||c|c|c|c|c|c|c|c|c|c|c|c|c|c|}&#xA;   \hline&#xA;   $t$ &amp; 0.1 &amp; 0.25 &amp; 0.5 &amp; 0.75 &amp; 1 &amp; 1.5 &amp; 2 &amp; 2.5 &amp; 3 &amp; 4 &amp; 6 &amp; 8 &amp; 10 &amp; 12 \\&#xA;   \hline&#xA;   $Y_0$ &amp; 16.1 &amp; 14.3 &amp; 12 &amp; 10.3 &amp; 9 &amp; 7.2 &amp; 6.1 &amp; 5.2 &amp; 4.6 &amp; 3.7 &amp; 2.5 &amp; 1.7 &amp; 1.18 &amp; 0.81 \\&#xA;   \hline&#xA;   \end{tabular} $$"></p><p>Let us set down <img src="drugs_parameters_eq25947.png" alt="$n$"> the number of measurements, and <i>q</i> the quadruplet of parameters we are looking for:</p><p><img src="drugs_parameters_eq38568.png" alt="$$ q = (a, \alpha, b, \beta) $$"></p><p>Let us introduce also <i>g</i>, defined as:</p><p><img src="drugs_parameters_eq20178.png" alt="$$ g : q \mapsto \left( \begin{tabular}{c} $f(q, t_1)$ \\ $f(q, t_2)$ \\ ... \\ $f(q, t_n)$ \end{tabular} \right) $$"></p><p>In this way, the problem of determining <i>q</i> can be seen as the inversion of <i>Y0</i> through <i>g</i>. Hence, enclosures of <i>q</i> may be found using <a href="../../html/vsivia.html">vsivia</a>.</p><p>The following class shows how to configure <a href="../../html/vsivia.html">vsivia</a> in order to solve this problem.</p><!--/introduction--><p>To begin with, a new class inheriting from <a href="../../html/vsivia_parameters.html">vsivia_parameters</a> shall be created.</p><pre class="codeinput"><span class="keyword">classdef</span> drugs_parameters &lt; vsivia_parameters
+</pre><pre class="codeinput">    properties
+</pre><p>Its <i>algorithm</i> property shall be <i>inversion</i>.</p><pre class="codeinput">        algorithm = <span class="string">'inversion'</span> ;
+</pre><p>An initial guess about a box containing <i>q</i> shall be specified.</p><pre class="codeinput">        U0 = [1 100 ; 0 10 ; 1 100 ; 0 1] ;
+</pre><p>Then the image to be inverted, namely the measurements.</p><pre class="codeinput">        Y0 = [.95 1.05] * interval([ 16.1 14.3  12  10.3  9  7.2  6.1  5.2  4.6  3.7  2.5  1.7  1.18  .81 ], [], 0) ;
+</pre><p>Then the accuracy parameter, <i>epsilon</i>, that is set to 10 %, with respect to the size of <i>U0</i>.</p><pre class="codeinput">        epsilon = <span class="string">'10 %'</span> ;
+</pre><pre class="codeinput">    <span class="keyword">end</span> <span class="comment">% properties</span>
+</pre><p>In addition to the "core parameters" introduced by <a href="../../html/vsivia_parameters.html">vsivia_parameters</a>, the time vector is introduced as an additionnal property.</p><pre class="codeinput">    properties (Constant)
+
+        t = [ .1  .25  .5  .75  1  1.5  2  2.5  3  4  6  8  10  12 ] ;
+
+    <span class="keyword">end</span> <span class="comment">% constant properties</span>
+</pre><p>Finally, the function to be inverted (<i>i.e.</i> <i>g</i>) is defined. In comparison with <a href="doughnut_parameters.html">doughnut_parameters</a> and <a href="torus_parameters.html">torus_parameters</a>, the input parameter, namely <i>q</i>, is processed as a single parameter, and not as four separate parameters.</p><pre class="codeinput">    methods (Static)
+
+        <span class="keyword">function</span> y = compute(q)
+
+            t2 = drugs_parameters.t ;
+
+            y = q(:,1) * exp(-q(:,2)*t2) + q(:,3) * exp(-q(:,4)*t2) ;
+
+        <span class="keyword">end</span>
+
+    <span class="keyword">end</span> <span class="comment">% methods</span>
+</pre><pre class="codeinput"><span class="keyword">end</span>
+</pre><p class="footer"><br>
+      Published with MATLAB&reg; 7.11<br></p></div><!--
+##### SOURCE BEGIN #####
+%% Modeling the intravenous injection of a drug into a subject
+%
+% This application presents a more advanced way to use
+% <../../html/vsivia.html vsivia>, in comparison with
+% <torus_parameters.html torus_parameters> and
+% <doughnut_parameters.html doughnut_parameters>.
+%
+% The purpose of this application is to model, by a mathematical
+% expression, the effect of a bolus intravenous injection of a drug into a
+% subject. Concretely, we will aim at modeling the evolution of the blood
+% concentration of the drug, using a function _f_ of the kind:
+%
+% $$ f : (a, \alpha, b, \beta, t) \mapsto a \cdot e^{- \alpha \cdot t} + b
+% \cdot e^{- \beta \cdot t} $$
+%
+% where _t_ is the time elapsed since the injection. Enclosures of the four
+% other parameters, that are constant parameters, will be computed using
+% <../../html/vsivia.html vsivia>, from real measurements that give the
+% value of _f_ for some known values of _t_. The measurements considered
+% here are:
+%
+% $$ \begin{tabular}{|c||c|c|c|c|c|c|c|c|c|c|c|c|c|c|}
+%    \hline
+%    $t$ & 0.1 & 0.25 & 0.5 & 0.75 & 1 & 1.5 & 2 & 2.5 & 3 & 4 & 6 & 8 & 10 & 12 \\
+%    \hline
+%    $Y_0$ & 16.1 & 14.3 & 12 & 10.3 & 9 & 7.2 & 6.1 & 5.2 & 4.6 & 3.7 & 2.5 & 1.7 & 1.18 & 0.81 \\
+%    \hline
+%    \end{tabular} $$
+%
+% Let us set down $n$ the number of measurements, and _q_ the quadruplet of
+% parameters we are looking for:
+%
+% $$ q = (a, \alpha, b, \beta) $$
+%
+% Let us introduce also _g_, defined as:
+%
+% $$ g : q \mapsto \left( \begin{tabular}{c} $f(q, t_1)$ \\ $f(q, t_2)$ \\ ... \\ $f(q, t_n)$ \end{tabular} \right) $$
+%
+% In this way, the problem of determining _q_ can be seen as the inversion
+% of _Y0_ through _g_. Hence, enclosures of _q_ may be found using
+% <../../html/vsivia.html vsivia>.
+%
+% The following class shows how to configure
+% <../../html/vsivia.html vsivia> in order to solve this problem.
+
+%%
+% To begin with, a new class inheriting from
+% <../../html/vsivia_parameters.html vsivia_parameters> shall be created.
+
+classdef drugs_parameters < vsivia_parameters
+    
+    properties
+        
+        %%
+        % Its _algorithm_ property shall be _inversion_.
+        
+        algorithm = 'inversion' ;
+        
+        %%
+        % An initial guess about a box containing _q_ shall be specified.
+        
+        U0 = [1 100 ; 0 10 ; 1 100 ; 0 1] ;
+        
+        %%
+        % Then the image to be inverted, namely the measurements.
+        
+        Y0 = [.95 1.05] * interval([ 16.1 14.3  12  10.3  9  7.2  6.1  5.2  4.6  3.7  2.5  1.7  1.18  .81 ], [], 0) ;
+        
+        %%
+        % Then the accuracy parameter, _epsilon_, that is set to 10 %, with
+        % respect to the size of _U0_.
+        
+        epsilon = '10 %' ;
+        
+    end % properties
+    
+    %%
+    % In addition to the "core parameters" introduced by
+    % <../../html/vsivia_parameters.html vsivia_parameters>, the time vector
+    % is introduced as an additionnal property.
+    
+    properties (Constant)
+        
+        t = [ .1  .25  .5  .75  1  1.5  2  2.5  3  4  6  8  10  12 ] ;
+        
+    end % constant properties
+    
+    %%
+    % Finally, the function to be inverted (_i.e._ _g_) is defined. In
+    % comparison with <doughnut_parameters.html doughnut_parameters>
+    % and <torus_parameters.html torus_parameters>, the input
+    % parameter, namely _q_, is processed as a single parameter, and not as
+    % four separate parameters.
+
+    methods (Static)
+        
+        function y = compute(q)
+            
+            t2 = drugs_parameters.t ;
+            
+            y = q(:,1) * exp(-q(:,2)*t2) + q(:,3) * exp(-q(:,4)*t2) ;
+            
+        end
+        
+    end % methods
+    
+end
+
+##### SOURCE END #####
+--></body></html>

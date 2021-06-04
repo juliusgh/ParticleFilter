@@ -1,0 +1,721 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Generating automatically a forward-backward contractor</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2012-11-26"><meta name="DC.source" content="contractor.m"><style type="text/css">
+
+body {
+  background-color: white;
+  margin:10px;
+}
+
+h1 {
+  color: #990000; 
+  font-size: x-large;
+}
+
+h2 {
+  color: #990000;
+  font-size: medium;
+}
+
+/* Make the text shrink to fit narrow windows, but not stretch too far in 
+wide windows. */ 
+p,h1,h2,div.content div {
+  max-width: 600px;
+  /* Hack for IE6 */
+  width: auto !important; width: 600px;
+}
+
+pre.codeinput {
+  background: #EEEEEE;
+  padding: 10px;
+}
+@media print {
+  pre.codeinput {word-wrap:break-word; width:100%;}
+} 
+
+span.keyword {color: #0000FF}
+span.comment {color: #228B22}
+span.string {color: #A020F0}
+span.untermstring {color: #B20000}
+span.syscmd {color: #B28C00}
+
+pre.codeoutput {
+  color: #666666;
+  padding: 10px;
+}
+
+pre.error {
+  color: red;
+}
+
+p.footer {
+  text-align: right;
+  font-size: xx-small;
+  font-weight: lighter;
+  font-style: italic;
+  color: gray;
+}
+
+  </style></head><body><div class="content"><h1>Generating automatically a forward-backward contractor</h1><!--introduction--><p>The class <i>contractor</i>, presented hereafter, is used by the main algorithm, <i>vsivia</i>, in order to generate in an automatic way a forward-backward contractor from a Matlab function using only features (<i>i.e.</i> methods and operators) defined by this class (<i>contractor</i>).</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Approach</a></li><li><a href="#3">Giving intermediate variables unique names</a></li><li><a href="#5">Instantiating <i>contractor</i> objects</a></li><li><a href="#7">Generating forward and backward instructions in a generic way</a></li></ul></div><h2>Approach<a name="1"></a></h2><p>The process relies upon operator and function overloading. Originally, the Matlab function to be processed is intented to work with scalars and/or intervals (see class <i>interval</i>). When executed, the Matlab interpreter calls the methods specified in this function, one after another. In the case of scalars or intervals, it results in a sequence of artihmetic operations. Here, the idea consists in using those method calls in order to build the forward-backward contractor, step-by-step, instead of performing these arithmetic operations.</p><p>Concretly, it means that, at each step (<i>i.e.</i> each operation), the intructions corresponding to the forward and the backward are generated, and then put together with the intructions previously generated. Those list of instructions are built separately. The forward list is a FIFO list, while the backward one is a LIFO one. Moving back on the building process, each one of its steps is given a number, that is used to define intermediate variables in a unique way. In parallel, an other list containing all the intermediate variables beginning by a "A" (as opposed to those beginning by a "B") introduced so far is built. This list may be used to generate a header for the function designed to contain the forward-backward contractor.</p><p>About the names of the intermediate variables, those beginning with a "A" correspond to the result of a step of the forward process, while those starting with a "B" are used internally, in order to store the value of a particular variable (an input variable or a type "A" intermediate variable) during the forward process, before it is applied a non-injective operation (e.g. the square function or a trigonometric function). During the backward process, "B" variables help, in some cases, to perform the corresponding inverse operations with a more accurate result.</p><pre class="codeinput"><span class="keyword">classdef</span> contractor
+</pre><pre class="codeinput">    properties
+
+        name,                    <span class="comment">% The step number</span>
+
+        forward = {},            <span class="comment">% List of the forward instructions</span>
+
+        backward = {},           <span class="comment">% List of the backward instructions</span>
+
+        intermediate = {} ;      <span class="comment">% Intermediate variables list</span>
+
+    <span class="keyword">end</span>
+</pre><h2>Giving intermediate variables unique names<a name="3"></a></h2><p>Any intermediate variable is given a name of the form "A" or "B", followed by a stricly positive integer (<i>e.g.</i> "A1" or "B12"). Numbers related to type "A" or "B" intermediate variables are generated using the two methods below, that basically increment an internal counter each time they are called, and return a name built using the value of this counter.</p><pre class="codeinput">    methods (Hidden, Static)
+
+        <span class="keyword">function</span> s = nextA()                   <span class="comment">% Generates a name for type "A" intermediate variables</span>
+
+            <span class="keyword">persistent</span> n ;                     <span class="comment">% n : internal counter</span>
+
+            <span class="keyword">if</span> isempty(n)                      <span class="comment">% Initializes n to 1 if empty (first call)</span>
+                n = 1 ;
+                s = <span class="string">'A1'</span> ;
+            <span class="keyword">else</span>
+                n = n+1 ;                      <span class="comment">% Otherwise, increments it and builds the name</span>
+                s = [<span class="string">'A'</span> num2str(n, <span class="string">'%i'</span>)] ;
+            <span class="keyword">end</span>
+
+        <span class="keyword">end</span>
+
+        <span class="keyword">function</span> s = nextB()                   <span class="comment">% Generates a name for type "A" intermediate variables</span>
+
+            <span class="keyword">persistent</span> n ;                     <span class="comment">% n : internal counter</span>
+
+            <span class="keyword">if</span> isempty(n)                      <span class="comment">% Initializes n to 1 if empty (first call)</span>
+                n = 1 ;
+                s = <span class="string">'B1'</span> ;
+            <span class="keyword">else</span>
+                n = n+1 ;                      <span class="comment">% Otherwise, increments it and builds the name</span>
+                s = [<span class="string">'B'</span> num2str(n, <span class="string">'%i'</span>)] ;
+            <span class="keyword">end</span>
+
+        <span class="keyword">end</span>
+
+
+    <span class="keyword">end</span>
+</pre><p>-- <b>Miscellaneous</b> --</p><p>Some binary methods working with <i>contractor</i> instances (<i>e.g.</i> <i>plus</i>, <i>minus</i>) also accept non-_contractor_ parameters, for instance numbers. At the beginning of such methods, input parameters are ensured to be <i>contractor</i> instances (and if not, transformed to) by calling the following method.</p><pre class="codeinput">    methods (Static)
+
+        <span class="keyword">function</span> c = toContractor(c)
+
+            <span class="keyword">if</span> ~isa(c, <span class="string">'contractor'</span>)
+                c = contractor(c) ;
+            <span class="keyword">end</span>
+
+        <span class="keyword">end</span>
+
+    <span class="keyword">end</span> <span class="comment">% static methods</span>
+</pre><h2>Instantiating <i>contractor</i> objects<a name="5"></a></h2><p>The constructor hereafter can be invoked using different combinaisons of parameters. In any case, a first parameter is required and shall be: * A <i>contractor</i> instance: acts as copy constructor * A number: creates a <i>contractor</i> object whose name will be the string representation of the number * A string: creates a <i>constractor</i> object whose name will be that string Then, a second and even a third parameter can be specified. They are optional, shall be instances of <i>contractor</i>, and are used to built the <i>intermediate</i> property of the newly created <i>contractor</i>. The <i>intermediate</i> property of the "child" contains every unique value contained in that (those) of its parent(s).</p><pre class="codeinput">    methods
+</pre><pre class="codeinput">        <span class="keyword">function</span> c = contractor(varargin)
+
+            error(nargchk(1,3,nargin)) ;
+
+            arg = varargin{1} ;
+
+            <span class="keyword">if</span> isa(arg, <span class="string">'contractor'</span>)
+
+                c = arg ;
+
+            <span class="keyword">elseif</span> isa(arg, <span class="string">'numeric'</span>)
+
+                <span class="keyword">if</span> length(arg) &gt; 1
+
+                    c.name = [<span class="string">'[ '</span> num2str(arg, <span class="string">'%20.20g'</span>) <span class="string">' ]'</span>] ;
+
+                <span class="keyword">else</span>
+
+                    c.name = num2str(arg, <span class="string">'%20.20g'</span>) ;
+
+                <span class="keyword">end</span>
+
+            <span class="keyword">else</span>
+
+                c.name = arg ;
+
+            <span class="keyword">end</span>
+
+            <span class="keyword">if</span> nargin == 2
+
+                <span class="keyword">if</span> c.name(1) == <span class="string">'A'</span>
+
+                    c.intermediate = [ varargin{2}.intermediate ; { c.name } ] ;
+
+                <span class="keyword">end</span>
+
+            <span class="keyword">elseif</span> nargin == 3
+
+                c.intermediate = [ unique([ varargin{2}.intermediate ;
+                                              varargin{3}.intermediate ]) ;
+                                   { c.name } ] ;
+
+            <span class="keyword">end</span>
+
+        <span class="keyword">end</span> <span class="comment">% contractor</span>
+</pre><h2>Generating forward and backward instructions in a generic way<a name="7"></a></h2><p>The methods below are intented to generate the forward and backward properties of a "child" from that (those) of its "parent(s)" (<i>i.e.</i>, when a operation is performed, the "parent(s)" is (are) the operand(s), while the "child" is the result. Four cases are considered, depending upon the number of operands (one or two) and the forward or backward nature of the property to be built.</p><pre class="codeinput">        <span class="keyword">function</span> s = genBinaryForward(r, a, b, op)
+            s = [ a.forward ;
+                  b.forward ;
+                  { [ r.name <span class="string">' = '</span> r.name <span class="string">' &amp; ('</span> a.name op b.name <span class="string">') ;'</span> ] } ] ;
+        <span class="keyword">end</span> <span class="comment">% genBinaryForward</span>
+
+        <span class="keyword">function</span> s = genBinaryBackward(r, a, b, op1, op2, inv)
+
+            s = {} ;
+
+            <span class="keyword">if</span> isvarname(a.name)
+                s = { [ a.name <span class="string">' = '</span> a.name <span class="string">' &amp; ('</span> r.name op1 b.name <span class="string">') ;'</span> ] } ;
+            <span class="keyword">end</span>
+
+            <span class="keyword">if</span> isvarname(b.name)
+                <span class="keyword">if</span> inv
+                    s = [ s ; { [ b.name <span class="string">' = '</span> b.name <span class="string">' &amp; ('</span> a.name op2 r.name <span class="string">') ;'</span> ] } ] ;
+                <span class="keyword">else</span>
+                    s = [ s ; { [ b.name <span class="string">' = '</span> b.name <span class="string">' &amp; ('</span> r.name op2 a.name <span class="string">') ;'</span> ] } ] ;
+                <span class="keyword">end</span>
+            <span class="keyword">end</span>
+
+            s = [ s ; a.backward ; b.backward ; ] ;
+
+        <span class="keyword">end</span> <span class="comment">% genBinaryBackward</span>
+
+        <span class="keyword">function</span> s = genUnaryForward(r, a, fun)
+            s = [ a.forward ;
+                  { [ r.name <span class="string">' = '</span> r.name <span class="string">' &amp; '</span> fun <span class="string">'('</span> a.name <span class="string">') ;'</span> ] } ] ;
+        <span class="keyword">end</span> <span class="comment">% genUnaryForward</span>
+
+        <span class="keyword">function</span> s = genUnaryBackward(r, a, fun)
+            s = [ { [ a.name <span class="string">' = '</span> a.name <span class="string">' &amp; '</span> fun <span class="string">'('</span> r.name <span class="string">') ;'</span> ] } ;
+                  a.backward ; ] ;
+        <span class="keyword">end</span> <span class="comment">% genUnaryBackward</span>
+
+
+        <span class="keyword">function</span> r = plus(a, b)
+            a = contractor.toContractor(a) ;
+            b = contractor.toContractor(b) ;
+            r = contractor(contractor.nextA, a, b) ;
+            r.forward = genBinaryForward(r, a, b, <span class="string">'+'</span>) ;
+            r.backward = genBinaryBackward(r, a, b, <span class="string">'-'</span>, <span class="string">'-'</span>,false) ;
+        <span class="keyword">end</span> <span class="comment">% plus</span>
+
+        <span class="keyword">function</span> r = minus(a,b)
+            a = contractor.toContractor(a) ;
+            b = contractor.toContractor(b) ;
+            r = contractor(contractor.nextA, a, b) ;
+            r.forward = genBinaryForward(r, a, b, <span class="string">'-'</span>) ;
+            r.backward = genBinaryBackward(r, a, b, <span class="string">'+'</span>, <span class="string">'-'</span>,true) ;
+        <span class="keyword">end</span> <span class="comment">% minus</span>
+
+        <span class="keyword">function</span> r = uminus(a)
+            r = contractor(contractor.nextA, a) ;
+            r.forward =  [ a.forward ;
+                           { [ r.name <span class="string">' = '</span> r.name <span class="string">' &amp; -'</span> a.name <span class="string">' ;'</span> ] } ] ;
+            r.backward = [ { [ a.name <span class="string">' = '</span> a.name <span class="string">' &amp; -'</span> r.name <span class="string">' ;'</span> ] } ;
+                           a.backward ] ;
+        <span class="keyword">end</span> <span class="comment">% uminus</span>
+
+        <span class="keyword">function</span> r = mtimes(a,b)
+            a = contractor.toContractor(a) ;
+            b = contractor.toContractor(b) ;
+            r = contractor(contractor.nextA, a, b) ;
+            r.forward = genBinaryForward(r, a, b, <span class="string">'*'</span>) ;
+            r.backward = genBinaryBackward(r, a, b, <span class="string">'/'</span>, <span class="string">'/'</span>,false) ;
+        <span class="keyword">end</span> <span class="comment">% mtimes</span>
+
+        <span class="keyword">function</span> r = mrdivide(a,b)
+            a = contractor.toContractor(a) ;
+            b = contractor.toContractor(b) ;
+            r = contractor(contractor.nextA, a, b) ;
+            r.forward = genBinaryForward(r, a, b, <span class="string">'/'</span>) ;
+            r.backward = genBinaryBackward(r, a, b, <span class="string">'*'</span>, <span class="string">'/'</span>,true) ;
+        <span class="keyword">end</span> <span class="comment">% mrdivide</span>
+
+        <span class="keyword">function</span> r = exp(a)
+            r = contractor(contractor.nextA, a) ;
+            r.forward = genUnaryForward(r, a, <span class="string">'exp'</span>) ;
+            r.backward = genUnaryBackward(r, a, <span class="string">'log'</span>) ;
+        <span class="keyword">end</span> <span class="comment">% exp</span>
+
+        <span class="keyword">function</span> r = cos(a)
+
+            r = contractor(contractor.nextA, a) ;
+
+            r.forward = genUnaryForward(r, a, <span class="string">'cos'</span>) ;
+
+            bname = contractor.nextB ;
+
+            r.forward = [ r.forward ; { [ bname <span class="string">' = '</span> a.name <span class="string">' ;'</span> ] } ] ;
+
+            r.backward = [ { [ a.name <span class="string">' = '</span> a.name <span class="string">' &amp; acos('</span> r.name <span class="string">','</span> bname <span class="string">') ;'</span> ] } ;
+                             a.backward ] ;
+
+        <span class="keyword">end</span> <span class="comment">% cos</span>
+
+        <span class="keyword">function</span> r = sin(a)
+
+            r = contractor(contractor.nextA, a) ;
+
+            r.forward = genUnaryForward(r, a, <span class="string">'sin'</span>) ;
+
+            bname = contractor.nextB ;
+
+            r.forward = [ r.forward ; { [ bname <span class="string">' = '</span> a.name <span class="string">' ;'</span> ] } ] ;
+
+            r.backward = [ { [ a.name <span class="string">' = '</span> a.name <span class="string">' &amp; asin('</span> r.name <span class="string">','</span> bname <span class="string">') ;'</span> ] } ;
+                             a.backward ] ;
+
+        <span class="keyword">end</span> <span class="comment">% sin</span>
+
+
+        <span class="keyword">function</span> r = mpower(a,n)
+
+            r = contractor(contractor.nextA, a) ;
+
+            r.forward = [ a.forward ;
+                          { [ r.name <span class="string">' = '</span> r.name <span class="string">' &amp; '</span> a.name <span class="string">'^'</span> num2str(n, <span class="string">'%20.20g'</span>) <span class="string">' ;'</span> ] } ] ;
+
+            <span class="keyword">if</span> n == round(n)
+
+                <span class="keyword">if</span> mod(n,2) == 0
+
+                    bname = contractor.nextB ;
+
+                    r.forward = [ r.forward ; { [ bname <span class="string">' = '</span> a.name <span class="string">' ;'</span> ] } ] ;
+
+                    r.backward = [ { [ a.name <span class="string">' = '</span> a.name <span class="string">' &amp; nthroot('</span> r.name <span class="string">','</span><span class="keyword">...</span>
+                                        num2str(n, <span class="string">'%20.20g'</span>) <span class="string">','</span> bname <span class="string">') ;'</span> ] } ;
+                                        a.backward ; ] ;
+
+                <span class="keyword">else</span>
+
+                    r.backward = [ { [ a.name <span class="string">' = '</span> a.name <span class="string">' &amp; nthroot('</span> r.name <span class="string">','</span> num2str(n, <span class="string">'%20.20g'</span>) <span class="string">') ;'</span> ] } ;
+                                        a.backward ; ] ;
+
+                <span class="keyword">end</span>
+
+            <span class="keyword">else</span>
+
+                r.backward = [ { [ a.name <span class="string">' = '</span> a.name <span class="string">' &amp; '</span> r.name <span class="string">'^'</span> num2str(1/n, <span class="string">'%20.20g'</span>) <span class="string">' ;'</span> ] } ;
+                                 a.backward ; ] ;
+
+            <span class="keyword">end</span>
+
+        <span class="keyword">end</span> <span class="comment">% mpower</span>
+
+        <span class="keyword">function</span> r = power(r,n)
+            r = mpower(r,n) ;
+        <span class="keyword">end</span> <span class="comment">% power</span>
+
+
+        <span class="keyword">function</span> r = subsref(a,s)
+
+            s = s(1) ;
+
+            <span class="keyword">if</span> strcmp(s.type, <span class="string">'.'</span>)
+
+                 r = builtin(<span class="string">'subsref'</span>, a, s) ;
+
+            <span class="keyword">elseif</span> strcmp(s.type, <span class="string">'()'</span>)
+
+                r = contractor(contractor.nextB, a) ;
+
+                r.forward = [ a.forward ;
+                    { [ r.name <span class="string">' = subsref('</span> a.name <span class="string">', cell2struct({'</span><span class="keyword">...</span>
+                    <span class="string">''''</span> s.type <span class="string">''' ; '</span> subs2str(s.subs)<span class="keyword">...</span>
+                    <span class="string">'}, {''type'', ''subs''}, 1)) ;'</span> ] } ] ;
+
+                r.backward = [ { [ a.name <span class="string">' = subsasgn('</span> a.name <span class="string">', cell2struct({'</span><span class="keyword">...</span>
+                    <span class="string">''''</span> s.type <span class="string">''' ; '</span> subs2str(s.subs)<span class="keyword">...</span>
+                    <span class="string">'}, {''type'', ''subs''}, 1), '</span> r.name <span class="string">') ;'</span> ] } ;
+                    a.backward ] ;
+
+            <span class="keyword">end</span>
+
+        <span class="keyword">end</span> <span class="comment">% subsref</span>
+</pre><pre class="codeinput">    <span class="keyword">end</span> <span class="comment">% methods</span>
+</pre><pre class="codeinput"><span class="keyword">end</span>
+</pre><p class="footer"><br>
+      Published with MATLAB&reg; 7.11<br></p></div><!--
+##### SOURCE BEGIN #####
+%% Generating automatically a forward-backward contractor
+% The class _contractor_, presented hereafter, is used by the main
+% algorithm, _vsivia_, in order to generate in an automatic way a
+% forward-backward contractor from a Matlab function using only features
+% (_i.e._ methods and operators) defined by this class (_contractor_).
+
+%% Approach
+% The process relies upon operator and function overloading.
+% Originally, the Matlab function to be processed is intented to work
+% with scalars and/or intervals (see class _interval_). When executed,
+% the Matlab interpreter calls the methods specified in this function,
+% one after another. In the case of scalars or intervals, it results
+% in a sequence of artihmetic operations. Here, the idea consists in
+% using those method calls in order to build the forward-backward contractor,
+% step-by-step, instead of performing these arithmetic operations.
+%
+% Concretly, it means that, at each step (_i.e._ each operation), the
+% intructions corresponding to the forward and the backward are generated,
+% and then put together with the intructions previously generated. Those
+% list of instructions are built separately. The forward list is a FIFO list,
+% while the backward one is a LIFO one. Moving back on the building process,
+% each one of its steps is given a number, that is used to define intermediate
+% variables in a unique way. In parallel, an other list containing all the
+% intermediate variables beginning by a "A" (as opposed to those beginning by a
+% "B") introduced so far is built. This list may be used to generate a header
+% for the function designed to contain the forward-backward contractor. 
+%
+% About the names of the intermediate variables, those beginning with a "A"
+% correspond to the result of a step of the forward process, while those starting
+% with a "B" are used internally, in order to store the value of a particular variable
+% (an input variable or a type "A" intermediate variable) during the forward
+% process, before it is applied a non-injective operation (e.g. the square function
+% or a trigonometric function). During the backward process, "B" variables help,
+% in some cases, to perform the corresponding inverse operations with a more accurate
+% result.
+
+
+classdef contractor
+    
+    properties
+        
+        name,                    % The step number
+        
+        forward = {},            % List of the forward instructions
+        
+        backward = {},           % List of the backward instructions
+        
+        intermediate = {} ;      % Intermediate variables list
+        
+    end
+    
+    
+    %% Giving intermediate variables unique names
+    % Any intermediate variable is given a name of the form "A" or "B",
+    % followed by a stricly positive integer (_e.g._ "A1" or "B12").
+    % Numbers related to type "A" or "B" intermediate variables are generated
+    % using the two methods below, that basically increment an internal counter
+    % each time they are called, and return a name built using the value of this counter.
+    
+    methods (Hidden, Static)
+        
+        function s = nextA()                   % Generates a name for type "A" intermediate variables
+            
+            persistent n ;                     % n : internal counter
+            
+            if isempty(n)                      % Initializes n to 1 if empty (first call)
+                n = 1 ;
+                s = 'A1' ;
+            else
+                n = n+1 ;                      % Otherwise, increments it and builds the name
+                s = ['A' num2str(n, '%i')] ;
+            end
+            
+        end
+        
+        function s = nextB()                   % Generates a name for type "A" intermediate variables
+            
+            persistent n ;                     % n : internal counter
+            
+            if isempty(n)                      % Initializes n to 1 if empty (first call)
+                n = 1 ;
+                s = 'B1' ;
+            else
+                n = n+1 ;                      % Otherwise, increments it and builds the name
+                s = ['B' num2str(n, '%i')] ;
+            end
+            
+        end
+
+        
+    end
+    
+    
+    %%
+    % REPLACE_WITH_DASH_DASH *Miscellaneous* REPLACE_WITH_DASH_DASH
+    %
+    % Some binary methods working with _contractor_ instances (_e.g._ _plus_, _minus_)
+    % also accept non-_contractor_ parameters, for instance numbers. At the beginning
+    % of such methods, input parameters are ensured to be _contractor_ instances
+    % (and if not, transformed to) by calling the following method.
+
+    methods (Static)
+        
+        function c = toContractor(c)
+           
+            if ~isa(c, 'contractor')
+                c = contractor(c) ;
+            end
+            
+        end
+        
+    end % static methods
+    
+    
+    %% Instantiating _contractor_ objects
+    %
+    % The constructor hereafter can be invoked using different combinaisons
+    % of parameters. In any case, a first parameter is required and shall be:
+    % * A _contractor_ instance: acts as copy constructor
+    % * A number: creates a _contractor_ object whose name will be the string representation of the number
+    % * A string: creates a _constractor_ object whose name will be that string
+    % Then, a second and even a third parameter can be specified. They are optional, shall be
+    % instances of _contractor_, and are used to built the _intermediate_ property of the
+    % newly created _contractor_. The _intermediate_ property of the "child" contains
+    % every unique value contained in that (those) of its parent(s).
+    
+    
+    methods
+        
+        function c = contractor(varargin)
+            
+            error(nargchk(1,3,nargin)) ;
+            
+            arg = varargin{1} ;
+            
+            if isa(arg, 'contractor')
+                
+                c = arg ;
+                
+            elseif isa(arg, 'numeric')
+                
+                if length(arg) > 1
+                
+                    c.name = ['[ ' num2str(arg, '%20.20g') ' ]'] ;
+                    
+                else
+                    
+                    c.name = num2str(arg, '%20.20g') ;
+                    
+                end
+                
+            else
+                
+                c.name = arg ;
+                
+            end
+            
+            if nargin == 2
+                
+                if c.name(1) == 'A'
+                
+                    c.intermediate = [ varargin{2}.intermediate ; { c.name } ] ;
+                    
+                end
+                
+            elseif nargin == 3
+                
+                c.intermediate = [ unique([ varargin{2}.intermediate ;
+                                              varargin{3}.intermediate ]) ;
+                                   { c.name } ] ;
+                               
+            end
+            
+        end % contractor
+        
+        
+        %% Generating forward and backward instructions in a generic way
+        % The methods below are intented to generate the forward and backward
+        % properties of a "child" from that (those) of its "parent(s)" (_i.e._,
+        % when a operation is performed, the "parent(s)" is (are) the operand(s),
+        % while the "child" is the result. Four cases are considered, depending
+        % upon the number of operands (one or two) and the forward or backward
+        % nature of the property to be built.
+        
+        function s = genBinaryForward(r, a, b, op)
+            s = [ a.forward ;
+                  b.forward ;
+                  { [ r.name ' = ' r.name ' & (' a.name op b.name ') ;' ] } ] ;
+        end % genBinaryForward
+        
+        function s = genBinaryBackward(r, a, b, op1, op2, inv)
+            
+            s = {} ;
+            
+            if isvarname(a.name)
+                s = { [ a.name ' = ' a.name ' & (' r.name op1 b.name ') ;' ] } ;
+            end
+            
+            if isvarname(b.name)
+                if inv
+                    s = [ s ; { [ b.name ' = ' b.name ' & (' a.name op2 r.name ') ;' ] } ] ;
+                else
+                    s = [ s ; { [ b.name ' = ' b.name ' & (' r.name op2 a.name ') ;' ] } ] ;
+                end
+            end
+            
+            s = [ s ; a.backward ; b.backward ; ] ;
+            
+        end % genBinaryBackward
+        
+        function s = genUnaryForward(r, a, fun)
+            s = [ a.forward ;
+                  { [ r.name ' = ' r.name ' & ' fun '(' a.name ') ;' ] } ] ;
+        end % genUnaryForward
+        
+        function s = genUnaryBackward(r, a, fun)
+            s = [ { [ a.name ' = ' a.name ' & ' fun '(' r.name ') ;' ] } ;
+                  a.backward ; ] ;
+        end % genUnaryBackward
+        
+        
+        function r = plus(a, b)
+            a = contractor.toContractor(a) ;
+            b = contractor.toContractor(b) ;
+            r = contractor(contractor.nextA, a, b) ;
+            r.forward = genBinaryForward(r, a, b, '+') ;
+            r.backward = genBinaryBackward(r, a, b, '-', '-',false) ;
+        end % plus
+        
+        function r = minus(a,b)
+            a = contractor.toContractor(a) ;
+            b = contractor.toContractor(b) ;
+            r = contractor(contractor.nextA, a, b) ;
+            r.forward = genBinaryForward(r, a, b, '-') ;
+            r.backward = genBinaryBackward(r, a, b, '+', '-',true) ;
+        end % minus
+        
+        function r = uminus(a)
+            r = contractor(contractor.nextA, a) ;
+            r.forward =  [ a.forward ;
+                           { [ r.name ' = ' r.name ' & -' a.name ' ;' ] } ] ;
+            r.backward = [ { [ a.name ' = ' a.name ' & -' r.name ' ;' ] } ;
+                           a.backward ] ;
+        end % uminus
+        
+        function r = mtimes(a,b)
+            a = contractor.toContractor(a) ;
+            b = contractor.toContractor(b) ;
+            r = contractor(contractor.nextA, a, b) ;
+            r.forward = genBinaryForward(r, a, b, '*') ;
+            r.backward = genBinaryBackward(r, a, b, '/', '/',false) ;
+        end % mtimes
+        
+        function r = mrdivide(a,b)
+            a = contractor.toContractor(a) ;
+            b = contractor.toContractor(b) ;
+            r = contractor(contractor.nextA, a, b) ;
+            r.forward = genBinaryForward(r, a, b, '/') ;
+            r.backward = genBinaryBackward(r, a, b, '*', '/',true) ;
+        end % mrdivide
+        
+        function r = exp(a)
+            r = contractor(contractor.nextA, a) ;
+            r.forward = genUnaryForward(r, a, 'exp') ;
+            r.backward = genUnaryBackward(r, a, 'log') ;
+        end % exp
+        
+        function r = cos(a)
+            
+            r = contractor(contractor.nextA, a) ;
+            
+            r.forward = genUnaryForward(r, a, 'cos') ;
+            
+            bname = contractor.nextB ;
+            
+            r.forward = [ r.forward ; { [ bname ' = ' a.name ' ;' ] } ] ;
+            
+            r.backward = [ { [ a.name ' = ' a.name ' & acos(' r.name ',' bname ') ;' ] } ;
+                             a.backward ] ;
+            
+        end % cos
+        
+        function r = sin(a)
+            
+            r = contractor(contractor.nextA, a) ;
+            
+            r.forward = genUnaryForward(r, a, 'sin') ;
+            
+            bname = contractor.nextB ;
+            
+            r.forward = [ r.forward ; { [ bname ' = ' a.name ' ;' ] } ] ;
+            
+            r.backward = [ { [ a.name ' = ' a.name ' & asin(' r.name ',' bname ') ;' ] } ;
+                             a.backward ] ;
+                         
+        end % sin
+        
+        
+        function r = mpower(a,n)
+            
+            r = contractor(contractor.nextA, a) ;
+            
+            r.forward = [ a.forward ;
+                          { [ r.name ' = ' r.name ' & ' a.name '^' num2str(n, '%20.20g') ' ;' ] } ] ;
+                      
+            if n == round(n)
+                
+                if mod(n,2) == 0
+                    
+                    bname = contractor.nextB ;
+                    
+                    r.forward = [ r.forward ; { [ bname ' = ' a.name ' ;' ] } ] ;
+                    
+                    r.backward = [ { [ a.name ' = ' a.name ' & nthroot(' r.name ','...
+                                        num2str(n, '%20.20g') ',' bname ') ;' ] } ;
+                                        a.backward ; ] ;
+                                 
+                else
+                    
+                    r.backward = [ { [ a.name ' = ' a.name ' & nthroot(' r.name ',' num2str(n, '%20.20g') ') ;' ] } ;
+                                        a.backward ; ] ;
+                    
+                end
+                
+            else
+                
+                r.backward = [ { [ a.name ' = ' a.name ' & ' r.name '^' num2str(1/n, '%20.20g') ' ;' ] } ;
+                                 a.backward ; ] ;
+                
+            end
+            
+        end % mpower
+        
+        function r = power(r,n)
+            r = mpower(r,n) ;
+        end % power
+        
+        
+        function r = subsref(a,s)
+            
+            s = s(1) ;
+            
+            if strcmp(s.type, '.')
+                
+                 r = builtin('subsref', a, s) ;
+                 
+            elseif strcmp(s.type, '()')
+                
+                r = contractor(contractor.nextB, a) ;
+                
+                r.forward = [ a.forward ;
+                    { [ r.name ' = subsref(' a.name ', cell2struct({'...
+                    '''' s.type ''' ; ' subs2str(s.subs)...
+                    '}, {''type'', ''subs''}, 1)) ;' ] } ] ;
+                
+                r.backward = [ { [ a.name ' = subsasgn(' a.name ', cell2struct({'...
+                    '''' s.type ''' ; ' subs2str(s.subs)...
+                    '}, {''type'', ''subs''}, 1), ' r.name ') ;' ] } ;
+                    a.backward ] ;
+                
+            end
+            
+        end % subsref
+        
+        
+    end % methods
+    
+end
+
+
+##### SOURCE END #####
+--></body></html>

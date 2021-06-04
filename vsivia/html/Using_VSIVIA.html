@@ -1,0 +1,291 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Using VSIVIA</title><meta name="generator" content="MATLAB 7.11"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2013-01-16"><meta name="DC.source" content="Using_VSIVIA.m"><style type="text/css">
+
+body {
+  background-color: white;
+  margin:10px;
+}
+
+h1 {
+  color: #990000; 
+  font-size: x-large;
+}
+
+h2 {
+  color: #990000;
+  font-size: medium;
+}
+
+/* Make the text shrink to fit narrow windows, but not stretch too far in 
+wide windows. */ 
+p,h1,h2,div.content div {
+  max-width: 600px;
+  /* Hack for IE6 */
+  width: auto !important; width: 600px;
+}
+
+pre.codeinput {
+  background: #EEEEEE;
+  padding: 10px;
+}
+@media print {
+  pre.codeinput {word-wrap:break-word; width:100%;}
+} 
+
+span.keyword {color: #0000FF}
+span.comment {color: #228B22}
+span.string {color: #A020F0}
+span.untermstring {color: #B20000}
+span.syscmd {color: #B28C00}
+
+pre.codeoutput {
+  color: #666666;
+  padding: 10px;
+}
+
+pre.error {
+  color: red;
+}
+
+p.footer {
+  text-align: right;
+  font-size: xx-small;
+  font-weight: lighter;
+  font-style: italic;
+  color: gray;
+}
+
+  </style></head><body><div class="content"><h1>Using VSIVIA</h1><!--introduction--><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#2">Solving a 2-D inversion problem</a></li><li><a href="#3">Solving a 3-D inversion problem</a></li><li><a href="#4">Solving a 4-D data-fitting problem</a></li><li><a href="#5">Solving an IVGTT problem</a></li></ul></div><p><a href="vsivia.html">vsivia</a> is part of a toolbox that comprises several components: <a href="vsivia.html">vsivia</a> itself, a vectorial interval library, a contractor library, as well as some other tool functions, in particular <a href="draw_boxes.html">draw_boxes</a>, that is meant to plot sets of boxes on a figure. The pieces of code hereafter, based on the examples provided with <a href="vsivia.html">vsivia</a>, show how to implement these features.</p><pre class="codeinput">clear <span class="string">all</span> ;
+close <span class="string">all</span> ;
+</pre><h2>Solving a 2-D inversion problem<a name="2"></a></h2><p><a href="../examples/html/doughnut_parameters.html">doughnut_parameters</a> defines the following problem: inverting the function <i>f</i> on [1,2], <i>f</i> being:</p><p><img src="Using_VSIVIA_eq17246.png" alt="$$ f : (x,y) \mapsto x^2 + y^2 + x \cdot y $$"></p><p><a href="draw_boxes.html">draw_boxes</a> is used in order to plot the results of <a href="vsivia.html">vsivia</a>. The three first parameters specify the three vectors of boxes to be plotted, which are displayed respectively in red, yellow and blue. The last parameters indicate the dimensions associated to the X, Y and Z-axes. Their number depends upon the number of dimensions of the considered problem.</p><p>On the figure below, red boxes are sets whose image through <i>f</i> lies between 1 and 2: the set of these boxes is an inner enclosure of the solution set of the problem. On the opposite, blue boxes have been proven to contain no solution at all. Between those red and blue sets, yellow boxes are boxes whose images through <i>f</i> are not included in [1,2], but that have an non empty intersection with in [1,2]. Thus, the set of red and yellow boxes is an outer enclosure of the solution set.</p><pre class="codeinput">[S,E,N] = vsivia(doughnut_parameters) ;
+
+draw_boxes(S,E,N,1,2) ;
+</pre><pre class="codeoutput">Elapsed time is 0.182366 seconds.
+Number of iterations: 15
+Number of boxes processed: 3791
+</pre><img vspace="5" hspace="5" src="Using_VSIVIA_01.png" alt=""> <h2>Solving a 3-D inversion problem<a name="3"></a></h2><p><a href="../examples/html/torus_parameters.html">torus_parameters</a> defines a similar problem: inverting <i>g</i> on [1,4], where:</p><p><img src="Using_VSIVIA_eq77175.png" alt="$$ g : (x,y,z) \mapsto (R - \sqrt{x^2 + y^2})^2 + z^2 $$"></p><p>In this example, <i>R</i> is set to 5. As in the previous application, the results are plotted using <a href="draw_boxes.html">draw_boxes</a>. When called with 6 parameters, the figure is in 3 dimensions and, for a good readability, only the centers of the boxes contained in <i>S</i> and <i>E</i> are drawn using red and yellow spheres.</p><pre class="codeinput">[S,E,N] = vsivia(torus_parameters) ;
+
+draw_boxes(S,E,N,1,2,3) ;
+</pre><pre class="codeoutput">Elapsed time is 0.222621 seconds.
+Number of iterations: 19
+Number of boxes processed: 47855
+</pre><img vspace="5" hspace="5" src="Using_VSIVIA_02.png" alt=""> <h2>Solving a 4-D data-fitting problem<a name="4"></a></h2><p>In this third example, a data-fitting problem is solved as an inversion problem. As defined in <a href="../examples/html/drugs_parameters.html">drugs_parameters</a>, an <i>n</i>-element time vector <i>t</i> as well as an <i>n</i>-element measurement vector <i>Y0</i> are considered, the purpose being to find the boxes <i>x</i> such as:</p><p><img src="Using_VSIVIA_eq93558.png" alt="$$ f(t_i, x) \; \in \; Y_0^i ~~ (\forall i \in [1,n]) $$"></p><p><i>f</i> being:</p><p><img src="Using_VSIVIA_eq59797.png" alt="$$ f : (x_1, x_2, x_3, x_4, t) \mapsto x_1 \cdot e^{-x_2 \cdot t}&#xA;          + x_3 \cdot e^{-x_4 \cdot t} $$"></p><p>On the figure below, measurements have been drawn in black, using error bars in order plot measurement uncertainties, <i>i.e.</i> the lower and upper possible values for <i>Y0</i>. From the parameters defined by <a href="../examples/html/drugs_parameters.html">drugs_parameters</a>, <a href="vsivia.html">vsivia</a> determines an inner and an outer enclosures of the solution set, that corresponds to the situation in which <i>f</i> matches every measurement.</p><pre class="codeinput">drugs = drugs_parameters() ;
+
+[S,E] = vsivia(drugs) ;
+
+t = drugs.t ;
+
+Y0 = drugs.Y0 ;
+
+figure ;
+
+hold <span class="string">on</span> ;
+
+errorbar(t, .5*(Y0.lower+Y0.upper), .5*(Y0.upper-Y0.lower), <span class="string">'kx'</span>)
+
+YS = join(drugs.compute(S), 1) ;
+
+plot(t, YS.lower, <span class="string">'r'</span>) ;
+plot(t, YS.upper, <span class="string">'r'</span>) ;
+
+YE = join(drugs.compute([S ; E]), 1) ;
+
+plot(t, YE.lower, <span class="string">'g'</span>) ;
+plot(t, YE.upper, <span class="string">'g'</span>) ;
+</pre><pre class="codeoutput">Elapsed time is 8.131166 seconds.
+Number of iterations: 40
+Number of boxes processed: 309031
+</pre><img vspace="5" hspace="5" src="Using_VSIVIA_03.png" alt=""> <h2>Solving an IVGTT problem<a name="5"></a></h2><p>In this fourth and last example, an intravenous glucose tolerance test (IVGTT) is considered. Thorough explanations about it are given in <a href="../examples/html/IVGTT_parameters.html">IVGTT_parameters</a> but, to put it simply, it is the same kind of problem than the previous application, that is a 4-D data-fitting problem, except that it is slightly trickier, because:</p><div><ul><li>No explicit expression of the function to be inverted is known; integrating this function is required in order to determine its value in a given point</li></ul></div><div><ul><li>The theoretical model is not accurate enough to fit all the measurements, especially at the beginning of the test</li></ul></div><p>As a consequence, in <a href="../examples/html/IVGTT_parameters.html">IVGTT_parameters</a>, a numerical integration is performed in the <i>compute</i> function, that involves therefore much more computations than in the previous applications. In addition, modal interval analysis (MIA) has been used in order to reduce overbounding phenomena in interval computations. At last, the (optional) parameter <i>tol</i><i>_out</i> in <a href="vsivia_parameters.html">vsivia_parameters</a>, that stands for the number of measurements that may not be matched, has been set to 6.</p><p>As in the previous application about a bolus intravenous injection of a drug into a subject, a graphical representation of the model has been drawn using the enclosures of the parameters computed by <a href="vsivia.html">vsivia</a>.</p><pre class="codeinput"><span class="comment">% ivgtt = IVGTT_parameters ;</span>
+<span class="comment">%</span>
+<span class="comment">% [S,E] = vsivia(ivgtt) ;</span>
+<span class="comment">%</span>
+<span class="comment">% figure ;</span>
+<span class="comment">%</span>
+<span class="comment">% hold on ;</span>
+<span class="comment">%</span>
+<span class="comment">% t = ivgtt.t ;</span>
+<span class="comment">%</span>
+<span class="comment">% Y0 = ivgtt.Y0 ;</span>
+<span class="comment">%</span>
+<span class="comment">% errorbar(t, .5*(Y0.lower+Y0.upper), .5*(Y0.upper-Y0.lower), 'kx') ;</span>
+<span class="comment">%</span>
+<span class="comment">% YS = join(ivgtt.compute(S), 1) ;</span>
+<span class="comment">%</span>
+<span class="comment">% plot(t, YS.lower, 'r') ;</span>
+<span class="comment">% plot(t, YS.upper, 'r') ;</span>
+<span class="comment">%</span>
+<span class="comment">% YE = join(ivgtt.compute([S ; E]), 1) ;</span>
+<span class="comment">%</span>
+<span class="comment">% plot(t, YE.lower, 'g') ;</span>
+<span class="comment">% plot(t, YE.upper, 'g') ;</span>
+<span class="comment">%</span>
+</pre><p class="footer"><br>
+      Published with MATLAB&reg; 7.11<br></p></div><!--
+##### SOURCE BEGIN #####
+%% Using VSIVIA
+%
+%%
+% <vsivia.html vsivia> is part of a toolbox that comprises several
+% components: <vsivia.html vsivia> itself, a vectorial interval library,
+% a contractor library, as well as some other tool functions, in particular
+% <draw_boxes.html draw_boxes>, that is meant to plot sets of boxes on a
+% figure. The pieces of code hereafter, based on the examples provided with
+% <vsivia.html vsivia>, show how to implement these features.
+
+clear all ;
+close all ;
+
+%% Solving a 2-D inversion problem
+% 
+% <../examples/html/doughnut_parameters.html doughnut_parameters> defines
+% the following problem: inverting the function _f_ on [1,2], _f_ being:
+%
+% $$ f : (x,y) \mapsto x^2 + y^2 + x \cdot y $$
+%
+% <draw_boxes.html draw_boxes> is used in order to plot the results of
+% <vsivia.html vsivia>. The three first parameters specify the three
+% vectors of boxes to be plotted, which are displayed respectively in red,
+% yellow and blue. The last parameters indicate the dimensions associated
+% to the X, Y and Z-axes. Their number depends upon the number of
+% dimensions of the considered problem.
+%
+% On the figure below, red boxes are sets whose image through _f_ lies
+% between 1 and 2: the set of these boxes is an inner enclosure of the
+% solution set of the problem. On the opposite, blue boxes have been proven
+% to contain no solution at all. Between those red and blue sets, yellow
+% boxes are boxes whose images through _f_ are not included in [1,2], but
+% that have an non empty intersection with in [1,2]. Thus, the set of red
+% and yellow boxes is an outer enclosure of the solution set.
+
+[S,E,N] = vsivia(doughnut_parameters) ;
+    
+draw_boxes(S,E,N,1,2) ;
+
+
+%% Solving a 3-D inversion problem
+%
+% <../examples/html/torus_parameters.html torus_parameters> defines a
+% similar problem: inverting _g_ on [1,4], where:
+%
+% $$ g : (x,y,z) \mapsto (R - \sqrt{x^2 + y^2})^2 + z^2 $$
+%
+% In this example, _R_ is set to 5. As in the previous application, the
+% results are plotted using <draw_boxes.html draw_boxes>. When called with
+% 6 parameters, the figure is in 3 dimensions and, for a good readability,
+% only the centers of the boxes contained in _S_ and _E_ are drawn using
+% red and yellow spheres.
+
+[S,E,N] = vsivia(torus_parameters) ;
+    
+draw_boxes(S,E,N,1,2,3) ;
+
+
+%% Solving a 4-D data-fitting problem
+%
+% In this third example, a data-fitting problem is solved as an inversion
+% problem. As defined in <../examples/html/drugs_parameters.html drugs_parameters>,
+% an _n_-element time vector _t_ as well as an _n_-element measurement
+% vector _Y0_ are considered, the purpose being to find the boxes _x_ such as:
+% 
+% $$ f(t_i, x) \; \in \; Y_0^i ~~ (\forall i \in [1,n]) $$
+%
+% _f_ being:
+%
+% $$ f : (x_1, x_2, x_3, x_4, t) \mapsto x_1 \cdot e^{-x_2 \cdot t}
+%           + x_3 \cdot e^{-x_4 \cdot t} $$
+%
+% On the figure below, measurements have been drawn in black, using error
+% bars in order plot measurement uncertainties, _i.e._ the lower and upper
+% possible values for _Y0_. From the parameters defined by
+% <../examples/html/drugs_parameters.html drugs_parameters>, <vsivia.html
+% vsivia> determines an inner and an outer enclosures of the solution set,
+% that corresponds to the situation in which _f_ matches every measurement.
+
+drugs = drugs_parameters() ;
+
+[S,E] = vsivia(drugs) ;
+
+t = drugs.t ;
+
+Y0 = drugs.Y0 ;
+
+figure ;
+
+hold on ;
+
+errorbar(t, .5*(Y0.lower+Y0.upper), .5*(Y0.upper-Y0.lower), 'kx')
+
+YS = join(drugs.compute(S), 1) ;
+
+plot(t, YS.lower, 'r') ;
+plot(t, YS.upper, 'r') ;
+
+YE = join(drugs.compute([S ; E]), 1) ;
+
+plot(t, YE.lower, 'g') ;
+plot(t, YE.upper, 'g') ;
+
+
+%% Solving an IVGTT problem
+% In this fourth and last example, an intravenous glucose tolerance test
+% (IVGTT) is considered. Thorough explanations about it are given in
+% <../examples/html/IVGTT_parameters.html IVGTT_parameters> but, to put it
+% simply, it is the same kind of problem than the previous application,
+% that is a 4-D data-fitting problem, except that it is slightly trickier,
+% because:
+% 
+% * No explicit expression of the function to be inverted is known;
+% integrating this function is required in order to determine its value in
+% a given point
+%
+% * The theoretical model is not accurate enough to fit all the
+% measurements, especially at the beginning of the test
+%
+% As a consequence, in <../examples/html/IVGTT_parameters.html IVGTT_parameters>,
+% a numerical integration is performed in the _compute_ function, that
+% involves therefore much more computations than in the previous
+% applications. In addition, modal interval analysis (MIA) has been used in
+% order to reduce overbounding phenomena in interval computations. At last,
+% the (optional) parameter _tol___out_ in <vsivia_parameters.html
+% vsivia_parameters>, that stands for the number of measurements that may
+% not be matched, has been set to 6.
+%
+% As in the previous application about a bolus intravenous injection of a
+% drug into a subject, a graphical representation of the model has been
+% drawn using the enclosures of the parameters computed by <vsivia.html
+% vsivia>.
+
+% ivgtt = IVGTT_parameters ;
+% 
+% [S,E] = vsivia(ivgtt) ;
+% 
+% figure ;
+% 
+% hold on ;
+% 
+% t = ivgtt.t ;
+% 
+% Y0 = ivgtt.Y0 ;
+% 
+% errorbar(t, .5*(Y0.lower+Y0.upper), .5*(Y0.upper-Y0.lower), 'kx') ;
+% 
+% YS = join(ivgtt.compute(S), 1) ;
+% 
+% plot(t, YS.lower, 'r') ;
+% plot(t, YS.upper, 'r') ;
+% 
+% YE = join(ivgtt.compute([S ; E]), 1) ;
+% 
+% plot(t, YE.lower, 'g') ;
+% plot(t, YE.upper, 'g') ;
+% 
+
+##### SOURCE END #####
+--></body></html>
