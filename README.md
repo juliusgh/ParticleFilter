@@ -1,6 +1,10 @@
 # Matlab-Code für SA-31
 Dies ist der Matlab-Code für die Studienarbeit SA-31 mit dem Thema "Set-Membership Partikelfilter als Basis für robuste Regelungskonzepte"
 
+| MPC mit Kenntnis der Messwerte | Min-Max-MPC mit Kenntnis der Messwerte | MPC mit Kenntnis der exakten Zustände |
+:-------------------------:|:-------------------------:|:-------------------------:
+![](plots/animation-A0-ITM.gif)  |  ![](plots/animation-A1-ITM.gif)  |  ![](plots/animation-A2-ITM.gif)
+
 Folgende Dateien/Ordner sind von Bedeutung:
 - `ParticleFilter.m`: Implementierung der Partikelfilter-Algorithmen
 - `PFAlgorithms.m`: Enumeration für die Partikelfilter-Algorithmen
